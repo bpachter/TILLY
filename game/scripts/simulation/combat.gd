@@ -144,14 +144,20 @@ func apply_enemy_action(action: String) -> void:
 			# Pilot evasion skill reduces weapon damage
 			var raw_damage: int = rng.next_int(8, 16)
 			var damage = int(raw_damage * (1.0 - evasion))
+			# Player evade action gives additional damage reduction
+			if combat_state.get("player_evading", false):
+				damage = int(damage * 0.35)
+				combat_state["player_evading"] = false
 			# BUG-FIX #8: Clamp player hull to 0 minimum.
 			combat_state["player_hull"] = max(0, combat_state["player_hull"] - damage)
+			combat_state["last_enemy_damage"] = damage
 			# 30% chance a random crew member takes hull-breach injury
 			if rng.next_float() < 0.3:
 				_apply_crew_combat_damage(rng.next_int(8, 18))
 		"board_attempt":
 			var damage: int = rng.next_int(3, 8)
 			combat_state["player_hull"] = max(0, combat_state["player_hull"] - damage)
+			combat_state["last_enemy_damage"] = damage
 			# Boarding always injures crew
 			_apply_crew_combat_damage(rng.next_int(12, 22))
 		"shield_boost":
@@ -202,14 +208,66 @@ func apply_player_action(action: String) -> void:
 			var base_damage: int = rng.next_int(6, 14)
 			var damage_mod: float = crew_modifiers.get("attack_damage", 1.0)
 			var final_damage: int = int(base_damage * damage_mod)
-			combat_state["enemy_hull"] -= final_damage
+			if combat_state.get("enemy_shielded", false):
+				final_damage = int(final_damage * 0.5)
+				combat_state["enemy_shielded"] = false
+			combat_state["enemy_hull"] = max(0, combat_state["enemy_hull"] - final_damage)
+			combat_state["last_player_damage"] = final_damage
 		"repair":
 			var base_heal: int = rng.next_int(4, 10)
 			var heal_mod: float = crew_modifiers.get("repair_efficiency", 1.0)
 			var final_heal: int = int(base_heal * heal_mod)
-			combat_state["player_hull"] = min(combat_state["player_hull"] + final_heal, 100)
+			combat_state["player_hull"] = min(100, combat_state["player_hull"] + final_heal)
+			combat_state["last_player_heal"] = final_heal
+		"evade":
+			combat_state["player_evading"] = true
 		"shield_up":
 			combat_state["player_shielded"] = true
+
+
+func advance_turn(player_action: String) -> Dictionary:
+	## Combined player-then-enemy turn for interactive UI.
+	## Returns updated combat_state with outcome field.
+	if not is_running or combat_state.get("outcome", "ongoing") != "ongoing":
+		return combat_state
+
+	combat_state["tick"] += 1
+	combat_state["last_player_damage"] = 0
+	combat_state["last_player_heal"] = 0
+	combat_state["last_enemy_damage"] = 0
+	combat_state["player_evading"] = false
+
+	# --- Player action ---
+	apply_player_action(player_action)
+
+	# --- Check if enemy died ---
+	if combat_state.get("enemy_hull", 1) <= 0:
+		combat_state["outcome"] = "victory"
+		is_running = false
+		return combat_state
+
+	# --- Enemy action ---
+	var enemy_action = get_enemy_action(combat_state["tick"])
+	apply_enemy_action(enemy_action)
+	combat_state["last_enemy_action"] = enemy_action
+
+	# --- Check if player died ---
+	if combat_state.get("player_hull", 1) <= 0:
+		combat_state["outcome"] = "defeat"
+		is_running = false
+
+	var log_entry = {
+		"tick": combat_state["tick"],
+		"type": "turn",
+		"player_action": player_action,
+		"enemy_action": enemy_action,
+		"player_hull": combat_state["player_hull"],
+		"enemy_hull": combat_state["enemy_hull"],
+		"outcome": combat_state.get("outcome", "ongoing")
+	}
+	tick_log.append(log_entry)
+
+	return combat_state
 
 
 func calculate_crew_modifiers() -> Dictionary:

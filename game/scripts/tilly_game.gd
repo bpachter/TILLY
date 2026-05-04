@@ -179,6 +179,77 @@ func check_run_state() -> String:
 	return result
 
 
+func get_encounter_chance(dest_id: String) -> float:
+	## Returns the probability (0.0-1.0) of a hostile encounter at this destination.
+	var destinations_contract = contract_loader.get_contract("destinations")
+	for dest in destinations_contract.get("destinations", []):
+		if dest.get("id", "") == dest_id:
+			var risk: int = dest.get("risk_tier", 1)
+			var chances: Array = [0.0, 0.10, 0.25, 0.45, 0.65, 0.90]
+			return chances[clamp(risk, 0, 5)]
+	return 0.20
+
+
+func get_destination_neighbors(dest_id: String) -> Array:
+	## Returns neighbor destination IDs for a given location.
+	var destinations_contract = contract_loader.get_contract("destinations")
+	for dest in destinations_contract.get("destinations", []):
+		if dest.get("id", "") == dest_id:
+			return dest.get("neighbors", [])
+	return []
+
+
+func pick_random_event() -> Dictionary:
+	## Select a crew-aware event without resolving it. Returns the event dict.
+	if not is_initialized:
+		return {}
+
+	var events_contract: Dictionary = contract_loader.get_contract("events")
+	var events: Array = events_contract.get("events", [])
+
+	if events.is_empty():
+		return {}
+
+	var suggestions = crew_event_integration.get_crew_event_suggestions()
+
+	var weighted_events: Array = []
+	for event in events:
+		var event_id = event.get("id", "")
+		var weight = event.get("weight", 1.0)
+		if event_id in suggestions:
+			weight *= 3.0
+		weighted_events.append({"event": event, "weight": weight})
+
+	var weights: PackedFloat64Array = PackedFloat64Array()
+	for entry in weighted_events:
+		weights.append(entry.get("weight", 1.0))
+
+	var selected_idx: int = rng.next_weighted_choice(weights)
+	return weighted_events[selected_idx].get("event", {})
+
+
+func apply_event_choice(event_data: Dictionary, choice_idx: int) -> Dictionary:
+	## Apply a specific player-chosen choice from an event. Returns outcome dict.
+	var choices: Array = event_data.get("choices", [])
+	if choice_idx >= choices.size():
+		return {}
+
+	var choice = choices[choice_idx]
+	var event_id = event_data.get("id", "")
+
+	# Fire ambition + therapy hooks
+	crew_ambitions_manager.notify_event_triggered(event_id)
+	crew_mental_health_manager.apply_therapy_event(event_id)
+	_grant_event_skill_xp(event_data)
+
+	# Apply choice effects to game state
+	event_resolver.apply_choice(choice)
+
+	# Apply crew-modulated outcome (stress/morale)
+	var outcome = crew_event_integration.apply_event_outcome_with_crew(event_id, choice)
+	return outcome
+
+
 func trigger_random_event() -> Dictionary:
 	if not is_initialized:
 		return {}

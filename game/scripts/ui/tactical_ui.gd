@@ -1,470 +1,262 @@
 extends Control
 class_name TacticalUI
 
-## UI controller for combat phase.
-## Displays: ship subsystems, crew health/morale/stress with live status badges,
-## enemy ship hull, and a pause menu.
+signal combat_finished(outcome: String)
 
 var combat_engine: CombatEngine
 var game_state: GameState
 var crew: Array = []
-var is_paused: bool = false
-
-# Live crew panel — one row per crew member
+var _crew_panel_vbox: VBoxContainer
 var _crew_rows: Array = []
-
-# Cached node refs
 var _player_hull_bar: ProgressBar
 var _player_hull_label: Label
 var _enemy_hull_bar: ProgressBar
 var _enemy_hull_label: Label
-var _enemy_status_label: Label
-var _crew_panel_vbox: VBoxContainer
-
+var _enemy_name_label: Label
+var _enemy_shield_label: Label
+var _turn_log_vbox: VBoxContainer
+var _turn_log_scroll: ScrollContainer
+var _action_attack: Button
+var _action_repair: Button
+var _action_evade: Button
+var _result_label: Label
+var _continue_btn: Button
 
 func _ready() -> void:
-	setup_ui_layout()
-	update_display()
+	_build_layout()
 
+func _build_layout() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg = ColorRect.new()
+	bg.color = Color(0.05, 0.04, 0.10)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var root_hbox = HBoxContainer.new()
+	root_hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root_hbox.add_theme_constant_override("separation", 0)
+	add_child(root_hbox)
+	root_hbox.add_child(_build_crew_panel())
+	root_hbox.add_child(_build_center_panel())
+	root_hbox.add_child(_build_enemy_panel())
 
-func setup_ui_layout() -> void:
-	var main_hbox = HBoxContainer.new()
-	main_hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(main_hbox)
-	
-	# Left panel: Player ship + Crew Status
-	main_hbox.add_child(_build_player_panel())
-	
-	# Center: Combat viewport (placeholder)
-	var center_panel = PanelContainer.new()
-	center_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var center_label = Label.new()
-	center_label.text = "[Combat Viewport]"
-	center_label.add_theme_font_size_override("font_size", 18)
-	center_label.set_anchors_preset(Control.PRESET_CENTER)
-	center_panel.add_child(center_label)
-	main_hbox.add_child(center_panel)
-	
-	# Right panel: Enemy ship
-	main_hbox.add_child(_build_enemy_panel())
-	
-	# Pause button top-right
-	var pause_button = Button.new()
-	pause_button.text = "PAUSE"
-	pause_button.pressed.connect(_on_pause_pressed)
-	pause_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	add_child(pause_button)
-
-
-func _build_player_panel() -> PanelContainer:
+func _build_crew_panel() -> PanelContainer:
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(260, 0)
+	panel.custom_minimum_size = Vector2(300, 0)
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
 	panel.add_child(vbox)
-	
 	var title = Label.new()
-	title.text = "PLAYER SHIP"
-	title.add_theme_font_size_override("font_size", 14)
+	title.text = "CREW STATUS"
+	title.add_theme_font_size_override("font_size", 15)
 	vbox.add_child(title)
-	
-	# Hull row
 	var hull_hbox = HBoxContainer.new()
-	var hull_lbl = Label.new()
-	hull_lbl.text = "Hull:"
-	hull_lbl.custom_minimum_size = Vector2(40, 0)
-	hull_hbox.add_child(hull_lbl)
+	var hl = Label.new(); hl.text = "Ship Hull:"; hl.custom_minimum_size = Vector2(70, 0)
+	hull_hbox.add_child(hl)
 	_player_hull_bar = ProgressBar.new()
-	_player_hull_bar.min_value = 0
-	_player_hull_bar.max_value = 100
-	_player_hull_bar.value = 100
+	_player_hull_bar.min_value = 0; _player_hull_bar.max_value = 100; _player_hull_bar.value = 100
 	_player_hull_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hull_hbox.add_child(_player_hull_bar)
-	_player_hull_label = Label.new()
-	_player_hull_label.text = "100"
-	_player_hull_label.custom_minimum_size = Vector2(36, 0)
+	_player_hull_label = Label.new(); _player_hull_label.text = "100"; _player_hull_label.custom_minimum_size = Vector2(34, 0)
 	hull_hbox.add_child(_player_hull_label)
 	vbox.add_child(hull_hbox)
-	
-	# Separator
 	vbox.add_child(HSeparator.new())
-	
-	# Crew section header
-	var crew_title = Label.new()
-	crew_title.text = "CREW"
-	crew_title.add_theme_font_size_override("font_size", 12)
-	vbox.add_child(crew_title)
-	
+	var crew_hdr = Label.new(); crew_hdr.text = "CREW"; crew_hdr.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(crew_hdr)
 	_crew_panel_vbox = VBoxContainer.new()
 	_crew_panel_vbox.add_theme_constant_override("separation", 4)
 	vbox.add_child(_crew_panel_vbox)
-	
 	return panel
-
-
-func _build_enemy_panel() -> PanelContainer:
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(200, 0)
-	var vbox = VBoxContainer.new()
-	panel.add_child(vbox)
-	
-	var title = Label.new()
-	title.text = "ENEMY SHIP"
-	title.add_theme_font_size_override("font_size", 14)
-	vbox.add_child(title)
-	
-	_enemy_hull_label = Label.new()
-	_enemy_hull_label.name = "enemy_hull_label"
-	_enemy_hull_label.text = "Hull: 100/100"
-	vbox.add_child(_enemy_hull_label)
-	
-	_enemy_hull_bar = ProgressBar.new()
-	_enemy_hull_bar.name = "enemy_hull_bar"
-	_enemy_hull_bar.min_value = 0
-	_enemy_hull_bar.max_value = 100
-	_enemy_hull_bar.value = 100
-	vbox.add_child(_enemy_hull_bar)
-	
-	_enemy_status_label = Label.new()
-	_enemy_status_label.name = "enemy_status_label"
-	_enemy_status_label.text = "Status: Active"
-	vbox.add_child(_enemy_status_label)
-	
-	return panel
-
 
 func _build_crew_row(member) -> Dictionary:
-	## Build one crew row: name, health bar, morale bar, stress indicator, status badge.
-	var row_vbox = VBoxContainer.new()
-	row_vbox.add_theme_constant_override("separation", 2)
-	
-	# Name + status badge
+	var row_root = VBoxContainer.new()
+	row_root.add_theme_constant_override("separation", 2)
 	var name_hbox = HBoxContainer.new()
 	var name_lbl = Label.new()
 	name_lbl.text = "%s (%s)" % [member.name, member.role]
 	name_lbl.add_theme_font_size_override("font_size", 11)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_hbox.add_child(name_lbl)
-	
-	var status_badge = Label.new()
-	status_badge.text = "OK"
-	status_badge.add_theme_font_size_override("font_size", 10)
-	status_badge.custom_minimum_size = Vector2(60, 0)
-	name_hbox.add_child(status_badge)
-	row_vbox.add_child(name_hbox)
-	
-	# Health bar
+	var badge = Label.new(); badge.text = "OK"; badge.add_theme_font_size_override("font_size", 10)
+	badge.custom_minimum_size = Vector2(64, 0)
+	name_hbox.add_child(badge)
+	row_root.add_child(name_hbox)
 	var hp_hbox = HBoxContainer.new()
-	var hp_lbl = Label.new()
-	hp_lbl.text = "HP"
-	hp_lbl.custom_minimum_size = Vector2(26, 0)
-	hp_lbl.add_theme_font_size_override("font_size", 10)
-	hp_hbox.add_child(hp_lbl)
-	var hp_bar = ProgressBar.new()
-	hp_bar.min_value = 0
-	hp_bar.max_value = 100
-	hp_bar.value = member.health
-	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hp_hbox.add_child(hp_bar)
-	row_vbox.add_child(hp_hbox)
-	
-	# Morale bar
-	var morale_hbox = HBoxContainer.new()
-	var morale_lbl = Label.new()
-	morale_lbl.text = "MO"
-	morale_lbl.custom_minimum_size = Vector2(26, 0)
-	morale_lbl.add_theme_font_size_override("font_size", 10)
-	morale_hbox.add_child(morale_lbl)
-	var morale_bar = ProgressBar.new()
-	morale_bar.min_value = 0
-	morale_bar.max_value = 100
-	morale_bar.value = member.morale
-	morale_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	morale_hbox.add_child(morale_bar)
-	row_vbox.add_child(morale_hbox)
-	
-	# Stress bar
-	var stress_hbox = HBoxContainer.new()
-	var stress_lbl = Label.new()
-	stress_lbl.text = "ST"
-	stress_lbl.custom_minimum_size = Vector2(26, 0)
-	stress_lbl.add_theme_font_size_override("font_size", 10)
-	stress_hbox.add_child(stress_lbl)
-	var stress_bar = ProgressBar.new()
-	stress_bar.min_value = 0
-	stress_bar.max_value = 100
-	stress_bar.value = member.stress
-	stress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stress_hbox.add_child(stress_bar)
-	row_vbox.add_child(stress_hbox)
-	
-	# Phobia / skill badge row
-	var extras_lbl = Label.new()
-	extras_lbl.add_theme_font_size_override("font_size", 9)
-	extras_lbl.text = _build_extras_text(member)
-	row_vbox.add_child(extras_lbl)
-	
-	_crew_panel_vbox.add_child(row_vbox)
+	var hp_lbl = Label.new(); hp_lbl.text = "HP"; hp_lbl.custom_minimum_size = Vector2(24, 0); hp_lbl.add_theme_font_size_override("font_size", 10); hp_hbox.add_child(hp_lbl)
+	var hp_bar = ProgressBar.new(); hp_bar.min_value = 0; hp_bar.max_value = 100; hp_bar.value = member.health; hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL; hp_hbox.add_child(hp_bar)
+	row_root.add_child(hp_hbox)
+	var mo_hbox = HBoxContainer.new()
+	var mo_lbl = Label.new(); mo_lbl.text = "MO"; mo_lbl.custom_minimum_size = Vector2(24, 0); mo_lbl.add_theme_font_size_override("font_size", 10); mo_hbox.add_child(mo_lbl)
+	var mo_bar = ProgressBar.new(); mo_bar.min_value = 0; mo_bar.max_value = 100; mo_bar.value = member.morale; mo_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL; mo_hbox.add_child(mo_bar)
+	row_root.add_child(mo_hbox)
+	var st_hbox = HBoxContainer.new()
+	var st_lbl = Label.new(); st_lbl.text = "ST"; st_lbl.custom_minimum_size = Vector2(24, 0); st_lbl.add_theme_font_size_override("font_size", 10); st_hbox.add_child(st_lbl)
+	var st_bar = ProgressBar.new(); st_bar.min_value = 0; st_bar.max_value = 100; st_bar.value = member.stress; st_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL; st_hbox.add_child(st_bar)
+	row_root.add_child(st_hbox)
+	var extras = Label.new(); extras.add_theme_font_size_override("font_size", 9); extras.text = _build_extras_text(member)
+	row_root.add_child(extras)
+	_crew_panel_vbox.add_child(row_root)
 	if crew.find(member) < crew.size() - 1:
 		_crew_panel_vbox.add_child(HSeparator.new())
-	
-	return {
-		"root": row_vbox,
-		"status_badge": status_badge,
-		"hp_bar": hp_bar,
-		"morale_bar": morale_bar,
-		"stress_bar": stress_bar,
-		"extras_lbl": extras_lbl,
-		"crew_member": member
-	}
-
+	return {"root": row_root, "badge": badge, "hp_bar": hp_bar, "mo_bar": mo_bar, "st_bar": st_bar, "extras": extras, "member": member}
 
 func _build_extras_text(member) -> String:
 	var parts: Array = []
-	# Skill levels
-	var primary_skill = member.get_primary_skill() if member.has_method("get_primary_skill") else ""
-	if primary_skill != "":
-		var lvl = member.skill_level.get(primary_skill, 0)
-		var level_names = ["Novice", "Proficient", "Expert"]
-		parts.append("%s: %s" % [primary_skill.capitalize(), level_names[lvl]])
-	# Active phobias (abbreviated)
+	if member.has_method("get_primary_skill"):
+		var sk = member.get_primary_skill()
+		if sk != "":
+			var lvl_names = ["Novice", "Proficient", "Expert"]
+			parts.append("%s: %s" % [sk.capitalize(), lvl_names[member.skill_level.get(sk, 0)]])
 	if not member.phobias.is_empty():
-		parts.append("⚠ %s" % ", ".join(member.phobias))
-	# Ambition progress
-	if not member.ambition_id.is_empty() and not member.ambition_complete:
-		parts.append("Goal %d%%" % member.ambition_progress)
-	elif member.ambition_complete:
-		parts.append("★ Goal done")
+		parts.append("! " + ", ".join(member.phobias))
+	if not member.ambition_id.is_empty():
+		if member.ambition_complete: parts.append("* Goal done")
+		else: parts.append("Goal %d%%" % member.ambition_progress)
 	return " | ".join(parts)
 
+func _get_status_badge(member) -> String:
+	if member.health <= 0:  return "DEAD"
+	if member.stress > 75:  return "PANICKED"
+	if member.morale <= 20: return "DESPAIR"
+	if member.health < 30:  return "CRITICAL"
+	if member.morale > 80 and member.stress < 20: return "EXCELLENT"
+	return "OK"
 
-func bind_combat(p_combat_engine: CombatEngine, p_game_state: GameState, p_crew: Array) -> void:
-	combat_engine = p_combat_engine
-	game_state = p_game_state
-	crew = p_crew
-	_rebuild_crew_panel()
-
-
-func _rebuild_crew_panel() -> void:
-	## Clear and rebuild crew rows from current crew array.
+func _rebuild_crew_rows() -> void:
 	for child in _crew_panel_vbox.get_children():
 		child.queue_free()
 	_crew_rows.clear()
-	
 	for member in crew:
-		var row = _build_crew_row(member)
-		_crew_rows.append(row)
+		_crew_rows.append(_build_crew_row(member))
 
+func _build_center_panel() -> VBoxContainer:
+	var outer = VBoxContainer.new()
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 14)
+	outer.add_child(margin)
+	var inner = VBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inner.add_theme_constant_override("separation", 10)
+	margin.add_child(inner)
+	var title = Label.new(); title.text = "-- COMBAT --"; title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size", 22)
+	inner.add_child(title)
+	_turn_log_scroll = ScrollContainer.new()
+	_turn_log_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_turn_log_scroll.custom_minimum_size = Vector2(0, 300)
+	inner.add_child(_turn_log_scroll)
+	_turn_log_vbox = VBoxContainer.new()
+	_turn_log_vbox.add_theme_constant_override("separation", 3)
+	_turn_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_turn_log_scroll.add_child(_turn_log_vbox)
+	_result_label = Label.new(); _result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _result_label.add_theme_font_size_override("font_size", 26); _result_label.visible = false
+	inner.add_child(_result_label)
+	var action_lbl = Label.new(); action_lbl.text = "Choose your action:"; action_lbl.add_theme_font_size_override("font_size", 13)
+	inner.add_child(action_lbl)
+	var btn_hbox = HBoxContainer.new(); btn_hbox.add_theme_constant_override("separation", 12)
+	inner.add_child(btn_hbox)
+	_action_attack = Button.new(); _action_attack.text = "ATTACK\nDeal damage"; _action_attack.custom_minimum_size = Vector2(150, 60); _action_attack.pressed.connect(_on_attack_pressed)
+	btn_hbox.add_child(_action_attack)
+	_action_repair = Button.new(); _action_repair.text = "REPAIR\nRestore hull"; _action_repair.custom_minimum_size = Vector2(150, 60); _action_repair.pressed.connect(_on_repair_pressed)
+	btn_hbox.add_child(_action_repair)
+	_action_evade = Button.new(); _action_evade.text = "EVADE\nReduce next hit"; _action_evade.custom_minimum_size = Vector2(150, 60); _action_evade.pressed.connect(_on_evade_pressed)
+	btn_hbox.add_child(_action_evade)
+	_continue_btn = Button.new(); _continue_btn.text = "CONTINUE"; _continue_btn.custom_minimum_size = Vector2(200, 50); _continue_btn.visible = false; _continue_btn.pressed.connect(_on_continue_pressed)
+	inner.add_child(_continue_btn)
+	return outer
 
-func update_display() -> void:
-	if not combat_engine:
-		return
-	
-	var state = combat_engine.get_combat_state()
-	
-	# Update player hull
-	var player_hull = state.get("player_hull", 0)
-	if _player_hull_bar:
-		_player_hull_bar.value = player_hull
-	if _player_hull_label:
-		_player_hull_label.text = str(player_hull)
-	
-	# Update enemy hull
-	var enemy_hull = state.get("enemy_hull", 0)
-	if _enemy_hull_bar:
-		_enemy_hull_bar.value = enemy_hull
-	if _enemy_hull_label:
-		_enemy_hull_label.text = "Hull: %d/100" % enemy_hull
-	
-	# Update outcome display
-	if combat_engine.is_combat_over():
-		var outcome = state.get("outcome", "unknown")
-		if _enemy_status_label:
-			_enemy_status_label.text = "Status: %s" % outcome.to_upper()
-	
-	# Update crew rows
-	for row in _crew_rows:
-		var member = row["crew_member"]
-		row["hp_bar"].value = member.health
-		row["morale_bar"].value = member.morale
-		row["stress_bar"].value = member.stress
-		row["status_badge"].text = _get_status_badge(member)
-		row["extras_lbl"].text = _build_extras_text(member)
-
-
-func _get_status_badge(member) -> String:
-	if member.health <= 0:
-		return "DEAD"
-	if member.stress > 75:
-		return "PANICKED"
-	if member.morale <= 20:
-		return "DESPAIR"
-	if member.morale < 30:
-		return "CRISIS"
-	if member.health < 30:
-		return "CRITICAL"
-	if member.morale > 80 and member.stress < 20:
-		return "EXCELLENT"
-	return "OK"
-
-
-func _on_pause_pressed() -> void:
-	is_paused = !is_paused
-	combat_engine.set_paused(is_paused)
-	print("Combat %s" % ("PAUSED" if is_paused else "RESUMED"))
-
-
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		_on_pause_pressed()
-
-
-
-func _ready() -> void:
-	print("TacticalUI initializing...")
-	setup_ui_layout()
-	update_display()
-
-
-func setup_ui_layout() -> void:
-	# Root HBoxContainer for main layout
-	var main_hbox = HBoxContainer.new()
-	main_hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(main_hbox)
-	
-	# Left panel: Subsystems (player ship)
-	var left_panel = create_subsystem_panel()
-	main_hbox.add_child(left_panel)
-	
-	# Center: Combat area (placeholder)
-	var center_panel = PanelContainer.new()
-	center_panel.add_theme_stylebox_override("panel", StyleBoxFlat.new())
-	center_panel.get_theme_stylebox("panel").bg_color = Color.BLACK
-	var center_label = Label.new()
-	center_label.text = "[Combat Viewport]"
-	center_label.add_theme_font_size_override("font_size", 20)
-	center_label.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	center_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	center_panel.add_child(center_label)
-	main_hbox.add_child(center_panel)
-	
-	# Right panel: Enemy ship
-	var right_panel = create_enemy_panel()
-	main_hbox.add_child(right_panel)
-	
-	# Top-right: Pause button
-	var pause_button = Button.new()
-	pause_button.text = "PAUSE"
-	pause_button.pressed.connect(_on_pause_pressed)
-	add_child(pause_button)
-	pause_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-
-
-func create_subsystem_panel() -> PanelContainer:
+func _build_enemy_panel() -> PanelContainer:
 	var panel = PanelContainer.new()
-	var vbox = VBoxContainer.new()
-	
-	var title = Label.new()
-	title.text = "PLAYER SHIP"
-	title.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(title)
-	
-	subsystem_status_vbox = VBoxContainer.new()
-	
-	# Create subsystem entries
-	var subsystems = ["Engines", "Shields", "Life Support", "Sensors", "Lab", "Weapons"]
-	for subsys_name in subsystems:
-		var hbox = HBoxContainer.new()
-		
-		var label = Label.new()
-		label.text = subsys_name
-		label.custom_minimum_size = Vector2(150, 0)
-		hbox.add_child(label)
-		
-		var progress = ProgressBar.new()
-		progress.min_value = 0
-		progress.max_value = 100
-		progress.value = 100
-		progress.custom_minimum_size = Vector2(100, 20)
-		hbox.add_child(progress)
-		
-		subsystem_status_vbox.add_child(hbox)
-	
-	vbox.add_child(subsystem_status_vbox)
-	panel.add_child(vbox)
+	panel.custom_minimum_size = Vector2(220, 0)
+	var vbox = VBoxContainer.new(); vbox.add_theme_constant_override("separation", 8); panel.add_child(vbox)
+	var title = Label.new(); title.text = "ENEMY SHIP"; title.add_theme_font_size_override("font_size", 15); vbox.add_child(title)
+	_enemy_name_label = Label.new(); _enemy_name_label.text = "Unknown"; _enemy_name_label.add_theme_font_size_override("font_size", 12); vbox.add_child(_enemy_name_label)
+	var hull_hbox = HBoxContainer.new()
+	var elbl = Label.new(); elbl.text = "Hull:"; elbl.custom_minimum_size = Vector2(40, 0); hull_hbox.add_child(elbl)
+	_enemy_hull_bar = ProgressBar.new(); _enemy_hull_bar.min_value = 0; _enemy_hull_bar.max_value = 100; _enemy_hull_bar.value = 100; _enemy_hull_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL; hull_hbox.add_child(_enemy_hull_bar)
+	_enemy_hull_label = Label.new(); _enemy_hull_label.text = "100"; _enemy_hull_label.custom_minimum_size = Vector2(34, 0); hull_hbox.add_child(_enemy_hull_label)
+	vbox.add_child(hull_hbox)
+	_enemy_shield_label = Label.new(); _enemy_shield_label.text = ""; _enemy_shield_label.add_theme_font_size_override("font_size", 11); vbox.add_child(_enemy_shield_label)
 	return panel
-
-
-func create_enemy_panel() -> PanelContainer:
-	var panel = PanelContainer.new()
-	var vbox = VBoxContainer.new()
-	
-	var title = Label.new()
-	title.text = "ENEMY SHIP"
-	title.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(title)
-	
-	var hull_label = Label.new()
-	hull_label.text = "Hull: 100/100"
-	hull_label.name = "enemy_hull_label"
-	vbox.add_child(hull_label)
-	
-	var hull_progress = ProgressBar.new()
-	hull_progress.min_value = 0
-	hull_progress.max_value = 100
-	hull_progress.value = 100
-	hull_progress.name = "enemy_hull_bar"
-	vbox.add_child(hull_progress)
-	
-	var status_label = Label.new()
-	status_label.text = "Status: Active"
-	status_label.name = "enemy_status_label"
-	vbox.add_child(status_label)
-	
-	panel.add_child(vbox)
-	return panel
-
 
 func bind_combat(p_combat_engine: CombatEngine, p_game_state: GameState, p_crew: Array) -> void:
 	combat_engine = p_combat_engine
 	game_state = p_game_state
 	crew = p_crew
-
+	_rebuild_crew_rows()
+	_update_enemy_info()
+	_log_line("=== COMBAT BEGIN ===")
+	_log_line("Your hull: %d  |  Enemy hull: %d" % [combat_engine.combat_state.get("player_hull", 100), combat_engine.combat_state.get("enemy_hull", 30)])
 
 func update_display() -> void:
-	if not combat_engine:
-		return
-	
-	var state = combat_engine.get_combat_state()
-	
-	# Update player ship hull
-	var root = get_node(".")
-	if root.has_node("PanelContainer"):
-		pass  # Would update here in full implementation
-	
-	# Update enemy ship status
-	var enemy_hull_label = find_child("enemy_hull_label")
-	if enemy_hull_label:
-		enemy_hull_label.text = "Hull: %d/100" % state.get("enemy_hull", 0)
-	
-	var enemy_hull_bar = find_child("enemy_hull_bar")
-	if enemy_hull_bar:
-		enemy_hull_bar.value = state.get("enemy_hull", 0)
-	
-	# Update outcome if combat is over
-	if combat_engine.is_combat_over():
-		var outcome = state.get("outcome", "unknown")
-		var status_label = find_child("enemy_status_label")
-		if status_label:
-			status_label.text = "Status: %s" % outcome.to_upper()
+	if not combat_engine: return
+	var state = combat_engine.combat_state
+	var ph = state.get("player_hull", 100)
+	_player_hull_bar.value = ph; _player_hull_label.text = str(ph)
+	var eh = state.get("enemy_hull", 30)
+	var eh_max = combat_engine.enemy_template.get("hull", 30)
+	_enemy_hull_bar.max_value = eh_max; _enemy_hull_bar.value = eh; _enemy_hull_label.text = "%d/%d" % [eh, eh_max]
+	_enemy_shield_label.text = "[ SHIELDED ]" if state.get("enemy_shielded", false) else ""
+	for row in _crew_rows:
+		var m = row["member"]
+		row["hp_bar"].value = m.health; row["mo_bar"].value = m.morale; row["st_bar"].value = m.stress
+		row["badge"].text = _get_status_badge(m); row["extras"].text = _build_extras_text(m)
 
+func _on_attack_pressed() -> void: _do_turn("attack_weapons")
+func _on_repair_pressed() -> void: _do_turn("repair")
+func _on_evade_pressed() -> void:  _do_turn("evade")
 
-func _on_pause_pressed() -> void:
-	is_paused = !is_paused
-	combat_engine.set_paused(is_paused)
-	print("Combat %s" % ("PAUSED" if is_paused else "RESUMED"))
+func _do_turn(player_action: String) -> void:
+	if not combat_engine or combat_engine.is_combat_over(): return
+	_set_actions_enabled(false)
+	var result = combat_engine.advance_turn(player_action)
+	var player_dmg = result.get("last_player_damage", 0)
+	var player_heal = result.get("last_player_heal", 0)
+	var enemy_dmg = result.get("last_enemy_damage", 0)
+	var enemy_act = result.get("last_enemy_action", "?")
+	var p_str := ""
+	if player_action == "attack_weapons": p_str = "You attacked for %d dmg" % player_dmg
+	elif player_action == "repair": p_str = "You repaired %d hull" % player_heal
+	elif player_action == "evade": p_str = "You evaded (next hit reduced)"
+	var e_str = "%s: %d dmg to you" % [enemy_act, enemy_dmg] if enemy_dmg > 0 else enemy_act
+	_log_line("Turn %d: %s | Enemy: %s" % [result.get("tick", 0), p_str, e_str])
+	_log_line("  Hull: yours %d  |  enemy %d" % [result.get("player_hull", 0), result.get("enemy_hull", 0)])
+	update_display()
+	if combat_engine.is_combat_over(): _show_result(result.get("outcome", "ongoing"))
+	else: _set_actions_enabled(true)
 
+func _update_enemy_info() -> void:
+	if not combat_engine or combat_engine.enemy_template.is_empty(): return
+	var faction = combat_engine.enemy_template.get("faction", "unknown")
+	var eid = combat_engine.enemy_template.get("id", "?")
+	_enemy_name_label.text = "%s
+[%s]" % [eid.replace("_", " ").capitalize(), faction]
+	var eh = combat_engine.enemy_template.get("hull", 30)
+	_enemy_hull_bar.max_value = eh; _enemy_hull_bar.value = eh; _enemy_hull_label.text = "%d/%d" % [eh, eh]
 
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		_on_pause_pressed()
+func _log_line(text: String) -> void:
+	var lbl = Label.new(); lbl.text = text; lbl.add_theme_font_size_override("font_size", 11); lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_turn_log_vbox.add_child(lbl)
+	get_tree().create_timer(0.05).timeout.connect(func():
+		if is_instance_valid(_turn_log_scroll): _turn_log_scroll.scroll_vertical = 999999)
+
+func _show_result(outcome: String) -> void:
+	_set_actions_enabled(false)
+	match outcome:
+		"victory": _result_label.text = "VICTORY"; _result_label.add_theme_color_override("font_color", Color.GOLD)
+		"defeat":  _result_label.text = "DEFEAT";  _result_label.add_theme_color_override("font_color", Color.RED)
+		_:         _result_label.text = outcome.to_upper()
+	_result_label.visible = true
+	_continue_btn.visible = true
+	_log_line("=== COMBAT OVER: %s ===" % outcome.to_upper())
+
+func _set_actions_enabled(enabled: bool) -> void:
+	_action_attack.disabled = not enabled
+	_action_repair.disabled = not enabled
+	_action_evade.disabled = not enabled
+
+func _on_continue_pressed() -> void:
+	emit_signal("combat_finished", combat_engine.combat_state.get("outcome", "ongoing"))
