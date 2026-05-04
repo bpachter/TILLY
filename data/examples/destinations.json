@@ -24,6 +24,14 @@
       "risk_tier": 3,
       "resource_signatures": ["water_ice", "microbial_life"],
       "neighbors": ["mars_colony", "enceladus"]
+    },
+    {
+      "id": "enceladus",
+      "name": "Enceladus",
+      "region": "outer_system",
+      "risk_tier": 4,
+      "resource_signatures": ["water_ice", "unknown_signal"],
+      "neighbors": ["europa"]
     }
   ]
 }
