@@ -9,7 +9,7 @@ const SAVE_VERSION: int = 1
 
 func _ready() -> void:
 	if not DirAccess.dir_exists_absolute(SAVE_DIR):
-		DirAccess.make_abs_absolute(SAVE_DIR)
+		DirAccess.make_dir_absolute(SAVE_DIR)
 
 
 func save_game(game_state: GameState, crew: Array, filename: String = "autosave") -> bool:
@@ -78,10 +78,14 @@ func serialize_crew(crew: Array) -> Array:
 	return serialized
 
 
-func deserialize_crew(crew_data: Array, traits_contract: Dictionary) -> Array:
+func deserialize_crew(crew_data: Array, _traits_contract: Dictionary) -> Array:
+	# _traits_contract retained in signature for API compatibility
 	var crew: Array = []
 	for member_data in crew_data:
-		var personality = CrewPersonality.new()
-		personality.deserialize(member_data, traits_contract)
+		var crew_id: String = member_data.get("crew_id", "unknown_0")
+		var role: String = member_data.get("role", "security")
+		var member_name: String = member_data.get("name", "Unknown")
+		var personality = CrewPersonality.new(crew_id, role, member_name)
+		personality.deserialize(member_data)
 		crew.append(personality)
 	return crew

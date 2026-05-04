@@ -80,6 +80,9 @@ func initialize() -> bool:
 	morale_stress_manager = MoraleStressManager.new(crew)
 	print("✓ Morale/stress manager initialized")
 	
+	# Register crew death callback
+	morale_stress_manager.register_cascade_callback("crew_death", _on_crew_death)
+	
 	is_initialized = true
 	return true
 
@@ -253,3 +256,50 @@ func apply_stress_shock(magnitude: int = 20) -> void:
 	
 	morale_stress_manager.apply_emergency_stress_spike(magnitude)
 	print("Stress shock applied: crew stress +%d, morale -%d" % [magnitude, magnitude / 2])
+
+
+func _on_crew_death(dead_member: CrewPersonality, _unused: Variant = null) -> void:
+	## Callback fired by MoraleStressManager when a crew member dies.
+	## Applies morale penalties to survivors and triggers funeral event.
+	
+	print("\n⚠ CREW LOST: %s (%s) has died in action." % [dead_member.name, dead_member.role])
+	
+	# Log to game state
+	game_state.add_flag("crew_death_occurred", true)
+	var death_count: int = game_state.get_resource("crew_deaths")
+	game_state.resources["crew_deaths"] = death_count + 1 if "crew_deaths" in game_state.resources else 1
+	
+	# Print survivor morale impact
+	var living: Array = []
+	for member in crew:
+		if member.health > 0:
+			living.append(member)
+	
+	print("  Survivors: %d remaining. Morale impact applied." % living.size())
+	
+	if living.is_empty():
+		print("  ALL CREW LOST — game over condition reached.")
+		game_state.add_flag("all_crew_dead", true)
+
+
+func get_living_crew() -> Array:
+	## Returns array of crew members who are still alive.
+	var living: Array = []
+	for member in crew:
+		if member.health > 0:
+			living.append(member)
+	return living
+
+
+func check_post_combat_crew_deaths() -> Array:
+	## After combat, check for any crew deaths and apply consequences.
+	## Returns list of crew who died this combat.
+	
+	var newly_dead: Array = []
+	for member in crew:
+		var death_key = "death:%s" % member.crew_id
+		# Crew with health <= 0 that haven't been processed yet
+		if member.health <= 0 and not morale_stress_manager._active_cascades.has(death_key):
+			morale_stress_manager.handle_crew_death(member)
+			newly_dead.append(member)
+	return newly_dead

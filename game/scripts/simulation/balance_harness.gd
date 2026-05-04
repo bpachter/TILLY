@@ -72,6 +72,9 @@ func run_single_encounter(run_seed: int) -> void:
 		var random_enemy = enemies[rng.next_int(0, enemies.size())]
 		combat_engine.start_encounter(random_enemy.get("id", ""), enemies_contract)
 	
+	# BUG-FIX #9: Unpause so advance_tick() actually runs.
+	combat_engine.set_paused(false)
+	
 	# Simulate combat until outcome
 	for tick in range(100):  # Max 100 ticks per encounter
 		if combat_engine.is_combat_over():

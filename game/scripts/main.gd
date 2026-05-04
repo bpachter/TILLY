@@ -156,6 +156,16 @@ func simulate_combat(enemy_id: String) -> void:
 	elif outcome == "defeat":
 		print("Your ship was destroyed.")
 	
+	# Check for crew deaths
+	var newly_dead = tilly_game.check_post_combat_crew_deaths()
+	if not newly_dead.is_empty():
+		print("\nCrew losses this battle:")
+		for lost in newly_dead:
+			print("  ✝ %s (%s)" % [lost.name, lost.role])
+	
+	var living_crew = tilly_game.get_living_crew()
+	print("Crew remaining: %d/%d" % [living_crew.size(), tilly_game.crew.size()])
+	
 	combat_active = false
 
 

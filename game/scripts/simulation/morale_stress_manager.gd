@@ -18,7 +18,12 @@ const CONFLICT_RISK: int = -50      # Affinity very low
 # Natural decay rates (per time unit)
 const MORALE_DECAY_RATE: float = 0.5  # Morale drops slowly over time
 const STRESS_RECOVERY_RATE: float = 1.0  # Stress recovers faster than morale drops
-const AFFINITY_NEUTRAL_RATE: float = 0.1  # Relationships tend toward neutral
+const AFFINITY_NEUTRAL_DELTA: int = 1  # Integer delta applied per period toward neutral
+
+# Track per-crew active cascades to avoid re-firing every period
+# Keys: "panic:{crew_id}", "morale_crisis:{crew_id}", "decision_crisis:{crew_id}"
+# Pairs: "bonding:{crew_a}:{crew_b}", "conflict:{crew_a}:{crew_b}"
+var _active_cascades: Dictionary = {}
 
 
 func _init(p_crew: Array) -> void:
@@ -39,65 +44,110 @@ func advance_time_period() -> Array:
 	var cascades: Array = []
 	
 	for crew_member in crew:
-		# Natural morale decay
-		crew_member.morale = max(0, crew_member.morale - MORALE_DECAY_RATE)
+		if crew_member.health <= 0:
+			continue  # skip dead crew
 		
-		# Stress recovery (slower than morale loss)
+		var prev_morale: int = crew_member.morale
+		
+		# Natural morale decay
+		crew_member.morale = max(0, crew_member.morale - int(MORALE_DECAY_RATE))
+		
+		# Stress recovery (faster than morale loss)
 		crew_member.recover_stress(int(STRESS_RECOVERY_RATE))
 		
-		# Check panic threshold
-		if crew_member.stress >= PANIC_THRESHOLD and crew_member.stress - MORALE_DECAY_RATE < PANIC_THRESHOLD:
-			cascades.append({
-				"type": "panic_onset",
-				"crew_id": crew_member.crew_id,
-				"crew_member": crew_member
-			})
-			trigger_callbacks("panic_onset", crew_member)
+		# BUG-FIX #3: Panic onset detected when crew is panicked after applying external stress.
+		# advance_time_period only RECOVERS stress, so panic here means it was already active.
+		# Report it as ongoing panic (first time this period).
+		var panic_key = "panic:%s" % crew_member.crew_id
+		if crew_member.is_panicked():
+			if not _active_cascades.has(panic_key):
+				_active_cascades[panic_key] = true
+				cascades.append({
+					"type": "panic_onset",
+					"crew_id": crew_member.crew_id,
+					"crew_member": crew_member
+				})
+				trigger_callbacks("panic_onset", crew_member)
+		else:
+			_active_cascades.erase(panic_key)  # Cleared once stress drops below threshold
 		
-		# Check despair threshold
+		# BUG-FIX #6: Track first-time morale_crisis crossing only, not every period.
+		var crisis_key = "morale_crisis:%s" % crew_member.crew_id
 		if crew_member.morale <= DESPAIR_THRESHOLD:
-			cascades.append({
-				"type": "morale_crisis",
-				"crew_id": crew_member.crew_id,
-				"crew_member": crew_member
-			})
-			trigger_callbacks("morale_crisis", crew_member)
+			if not _active_cascades.has(crisis_key):
+				_active_cascades[crisis_key] = true
+				cascades.append({
+					"type": "morale_crisis",
+					"crew_id": crew_member.crew_id,
+					"crew_member": crew_member
+				})
+				trigger_callbacks("morale_crisis", crew_member)
+		else:
+			_active_cascades.erase(crisis_key)
 		
-		# Check crisis threshold (mid-range, affects decision-making)
-		if crew_member.morale < CRISIS_THRESHOLD and crew_member.morale > 10:
-			cascades.append({
-				"type": "decision_crisis",
-				"crew_id": crew_member.crew_id,
-				"crew_member": crew_member
-			})
-			trigger_callbacks("decision_crisis", crew_member)
+		# BUG-FIX #6: Track first-time decision_crisis crossing only.
+		var decision_key = "decision_crisis:%s" % crew_member.crew_id
+		if crew_member.morale < CRISIS_THRESHOLD and crew_member.morale > DESPAIR_THRESHOLD:
+			if not _active_cascades.has(decision_key):
+				_active_cascades[decision_key] = true
+				cascades.append({
+					"type": "decision_crisis",
+					"crew_id": crew_member.crew_id,
+					"crew_member": crew_member
+				})
+				trigger_callbacks("decision_crisis", crew_member)
+		else:
+			_active_cascades.erase(decision_key)
 	
-	# Relationship decay toward neutral
+	# BUG-FIX #4 & #5: Iterate pairs once (j > i) and apply integer drift.
 	for i in range(crew.size()):
-		for j in range(crew.size()):
-			if i != j:
-				var affinity = crew[i].get_affinity(crew[j].crew_id)
-				if affinity > 0:
-					crew[i].modify_affinity(crew[j].crew_id, int(-AFFINITY_NEUTRAL_RATE))
-				elif affinity < 0:
-					crew[i].modify_affinity(crew[j].crew_id, int(AFFINITY_NEUTRAL_RATE))
-				
-				# Check relationship thresholds
-				if affinity > BONDING_OPPORTUNITY and not (affinity - 1 > BONDING_OPPORTUNITY):
+		if crew[i].health <= 0:
+			continue
+		for j in range(i + 1, crew.size()):
+			if crew[j].health <= 0:
+				continue
+			
+			var affinity_ij = crew[i].get_affinity(crew[j].crew_id)
+			
+			# Drift both sides toward neutral by 1 (integer, BUG-FIX #4)
+			if affinity_ij > 0:
+				crew[i].modify_affinity(crew[j].crew_id, -AFFINITY_NEUTRAL_DELTA)
+				crew[j].modify_affinity(crew[i].crew_id, -AFFINITY_NEUTRAL_DELTA)
+			elif affinity_ij < 0:
+				crew[i].modify_affinity(crew[j].crew_id, AFFINITY_NEUTRAL_DELTA)
+				crew[j].modify_affinity(crew[i].crew_id, AFFINITY_NEUTRAL_DELTA)
+			
+			# BUG-FIX #5: Cascade keys are symmetric so each pair fires at most once.
+			var pair_key_a = "%s:%s" % [crew[i].crew_id, crew[j].crew_id]
+			var pair_key_b = "%s:%s" % [crew[j].crew_id, crew[i].crew_id]
+			
+			var re_read_affinity = crew[i].get_affinity(crew[j].crew_id)
+			
+			var bond_key = "bonding:%s" % pair_key_a
+			if re_read_affinity > BONDING_OPPORTUNITY:
+				if not _active_cascades.has(bond_key):
+					_active_cascades[bond_key] = true
 					cascades.append({
 						"type": "bonding_opportunity",
 						"crew_a": crew[i].crew_id,
 						"crew_b": crew[j].crew_id
 					})
 					trigger_callbacks("bonding_opportunity", crew[i], crew[j])
-				
-				if affinity < CONFLICT_RISK and not (affinity + 1 < CONFLICT_RISK):
+			else:
+				_active_cascades.erase(bond_key)
+			
+			var conflict_key = "conflict:%s" % pair_key_a
+			if re_read_affinity < CONFLICT_RISK:
+				if not _active_cascades.has(conflict_key):
+					_active_cascades[conflict_key] = true
 					cascades.append({
 						"type": "conflict_risk",
 						"crew_a": crew[i].crew_id,
 						"crew_b": crew[j].crew_id
 					})
 					trigger_callbacks("conflict_risk", crew[i], crew[j])
+			else:
+				_active_cascades.erase(conflict_key)
 	
 	return cascades
 
@@ -166,6 +216,8 @@ func apply_emergency_morale_boost(magnitude: int = 15) -> void:
 	## Emergency event (e.g., crew bonding dinner, significant discovery) boosts morale.
 	
 	for crew_member in crew:
+		if crew_member.health <= 0:
+			continue
 		crew_member.morale = min(100, crew_member.morale + magnitude)
 		crew_member.recover_stress(magnitude / 2)
 
@@ -174,8 +226,30 @@ func apply_emergency_stress_spike(magnitude: int = 20) -> void:
 	## Emergency event (e.g., combat, threat detected) spikes stress.
 	
 	for crew_member in crew:
+		if crew_member.health <= 0:
+			continue
 		crew_member.apply_stress(magnitude)
 		crew_member.morale = max(0, crew_member.morale - magnitude / 2)
+
+
+func handle_crew_death(dead_member: CrewPersonality) -> void:
+	## Called when a crew member dies. Applies morale penalty to survivors.
+	## Triggers crew_death cascade for registered listeners.
+	
+	for crew_member in crew:
+		if crew_member.crew_id == dead_member.crew_id:
+			continue
+		if crew_member.health <= 0:
+			continue
+		# Morale hit scales with affinity: base -15, extra -10 if they were close
+		var affinity = crew_member.get_affinity(dead_member.crew_id)
+		var morale_hit: int = 15 + (10 if affinity > 40 else 0)
+		crew_member.morale = max(0, crew_member.morale - morale_hit)
+		crew_member.apply_stress(20)
+	
+	var death_key = "death:%s" % dead_member.crew_id
+	_active_cascades[death_key] = true
+	trigger_callbacks("crew_death", dead_member)
 
 
 func trigger_callbacks(cascade_type: String, arg1: Variant = null, arg2: Variant = null) -> void:

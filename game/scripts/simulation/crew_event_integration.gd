@@ -42,20 +42,26 @@ func calculate_event_success_probability(event_id: String) -> float:
 	
 	# Check each crew member for trait affinity
 	for crew_member in crew:
+		if crew_member.health <= 0:
+			continue  # Dead crew don't contribute
+		
+		# BUG-FIX #7: Apply panic penalty once per crew member, outside the trait loop.
+		if crew_member.is_panicked():
+			crew_modifier -= 0.2
+		
 		for trait_id in crew_member.traits:
 			var affinity_events = trait_event_affinity.get(trait_id, [])
 			if event_id in affinity_events:
 				crew_modifier += 0.15  # +15% per matching trait
-			
-			# Stress penalty: high stress crew reduce success probability
-			if crew_member.is_panicked():
-				crew_modifier -= 0.2
 	
 	# Morale bonus: high morale crew more likely to succeed
 	var avg_morale: float = 0.0
+	var living_count: int = 0
 	for crew_member in crew:
-		avg_morale += crew_member.morale
-	avg_morale /= max(1, crew.size())
+		if crew_member.health > 0:
+			avg_morale += crew_member.morale
+			living_count += 1
+	avg_morale /= max(1, living_count)
 	
 	var morale_modifier: float = (avg_morale - 50.0) / 100.0 * 0.2  # ±10% based on morale
 	

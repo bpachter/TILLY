@@ -65,6 +65,17 @@ func is_panicked() -> bool:
 	return stress > 75
 
 
+func is_dead() -> bool:
+	return health <= 0
+
+
+func apply_health_damage(amount: int) -> bool:
+	## Apply combat injury. Returns true if this damage caused death.
+	var was_alive: bool = health > 0
+	health = max(0, health - amount)
+	return was_alive and health <= 0
+
+
 func modify_affinity(other_crew_id: String, delta: int) -> void:
 	var current: int = relationship_matrix.get(other_crew_id, 0)
 	relationship_matrix[other_crew_id] = clamp(current + delta, -100, 100)
