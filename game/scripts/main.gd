@@ -23,12 +23,22 @@ func _ready() -> void:
 
 func setup_tutorial_scenario() -> void:
 	print("\n=== Tutorial Scenario: Earth -> Mars -> Europa ===")
+	print("=== With Crew Personality Systems ===")
 	
 	tilly_game.start_new_game()
+	
+	# Print crew roster
+	print("\nStarting Crew:")
+	for crew_member in tilly_game.crew:
+		print("  - %s (%s): %s" % [crew_member.name, crew_member.role, crew_member.traits])
 	
 	# Phase 1: Earth (safe zone)
 	print("\n[Phase 1] At Earth Station")
 	await simulate_destination("earth", 2.0)
+	
+	# Trigger a crew-aware event
+	var event1 = tilly_game.trigger_crew_aware_event()
+	await get_tree().create_timer(1.0).timeout
 	
 	# Trigger a safe transit event
 	print("\n[Phase 2] Transiting to Mars...")
@@ -38,6 +48,14 @@ func setup_tutorial_scenario() -> void:
 	print("\n[Phase 3] Arrived at Mars Colony")
 	await simulate_destination("mars_colony", 2.0)
 	
+	# Advance crew time and trigger cascades
+	var cascades = tilly_game.advance_crew_time()
+	print("Crew morale update:")
+	var morale_status = tilly_game.get_morale_status()
+	print("  Average morale: %d" % morale_status.get("average_morale", 0))
+	print("  Diagnosis: %s" % morale_status.get("diagnosis", "unknown"))
+	await get_tree().create_timer(1.0).timeout
+	
 	# Trigger a travel event
 	print("\n[Phase 4] Transiting to Europa...")
 	await simulate_transit_to("europa")
@@ -46,7 +64,7 @@ func setup_tutorial_scenario() -> void:
 	print("\n[Phase 5] Arrived at Europa - Scanning for life...")
 	await simulate_destination("europa", 2.0)
 	
-	# Trigger combat encounter
+	# Trigger combat encounter with stress effects
 	print("\n[Phase 6] CONTACT DETECTED - Initiating combat...")
 	await simulate_combat("hybrid_scout_01")
 	
@@ -89,6 +107,9 @@ func simulate_combat(enemy_id: String) -> void:
 		print("ERROR: Failed to start combat")
 		return
 	
+	# Apply stress shock to crew
+	tilly_game.apply_stress_shock(25)
+	
 	combat_active = true
 	is_paused = true
 	
@@ -98,6 +119,19 @@ func simulate_combat(enemy_id: String) -> void:
 		tilly_game.combat_engine.combat_state["player_hull"],
 		tilly_game.combat_engine.combat_state["enemy_hull"]
 	])
+	print("\nCrew stress applied (+25)")
+	
+	# Show crew modifier effects
+	var crew_effects = {}
+	for crew_member in tilly_game.crew:
+		var mods = crew_member.get_trait_modifiers(tilly_game.contract_loader.get_contract("crew_traits"))
+		for key in mods:
+			crew_effects[key] = crew_effects.get(key, 0.0) + mods[key]
+	
+	if crew_effects.size() > 0:
+		print("Active crew trait modifiers:")
+		for key in crew_effects:
+			print("  %s: %.2f" % [key, crew_effects[key]])
 	
 	for tick_count in range(15):
 		if tilly_game.combat_engine.is_combat_over():

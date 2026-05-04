@@ -10,6 +10,8 @@ var game_state: GameState
 var event_resolver: EventResolver
 var combat_engine: CombatEngine
 var crew_generator: CrewGenerator
+var crew_event_integration: CrewEventIntegration
+var morale_stress_manager: MoraleStressManager
 var crew: Array = []
 
 var is_initialized: bool = false
@@ -69,6 +71,14 @@ func initialize() -> bool:
 	
 	# Set crew on combat engine
 	combat_engine.set_crew(crew, traits_contract)
+	
+	# Create crew event integration system
+	crew_event_integration = CrewEventIntegration.new(rng, game_state, crew, traits_contract)
+	print("✓ Crew event integration initialized")
+	
+	# Create morale/stress manager
+	morale_stress_manager = MoraleStressManager.new(crew)
+	print("✓ Morale/stress manager initialized")
 	
 	is_initialized = true
 	return true
@@ -151,3 +161,95 @@ func get_current_game_state() -> GameState:
 
 func get_combat_state() -> Dictionary:
 	return combat_engine.get_combat_state()
+
+
+func trigger_crew_aware_event() -> Dictionary:
+	## Triggers event based on crew traits and morale state.
+	## Higher priority given to events crew is well-suited for.
+	
+	if not is_initialized:
+		return {}
+	
+	var events_contract: Dictionary = contract_loader.get_contract("events")
+	var events: Array = events_contract.get("events", [])
+	
+	if events.is_empty():
+		return {}
+	
+	# Get event suggestions based on crew state
+	var suggestions = crew_event_integration.get_crew_event_suggestions()
+	
+	# Find suggested events and weight them higher
+	var weighted_events: Array = []
+	for event in events:
+		var event_id = event.get("id", "")
+		var weight = event.get("weight", 1.0)
+		
+		if event_id in suggestions:
+			weight *= 3.0  # Triple weight for crew-suggested events
+		
+		weighted_events.append({"event": event, "weight": weight})
+	
+	# Select weighted random event
+	var weights: PackedFloat64Array = PackedFloat64Array()
+	for entry in weighted_events:
+		weights.append(entry.get("weight", 1.0))
+	
+	var selected_idx: int = rng.next_weighted_choice(weights)
+	var selected_event = weighted_events[selected_idx].get("event", {})
+	
+	if selected_event.is_empty():
+		return {}
+	
+	print("Crew-aware event triggered: %s" % selected_event.get("title", "Unknown"))
+	
+	# Apply event outcome with crew trait modifiers
+	var choice = selected_event.get("choices", [{}])[0]
+	var outcome = crew_event_integration.apply_event_outcome_with_crew(
+		selected_event.get("id", ""),
+		choice
+	)
+	
+	return outcome
+
+
+func advance_crew_time() -> Array:
+	## Advance crew time state (morale decay, stress recovery, cascades).
+	## Returns array of triggered cascade events (panic, crisis, bonding, conflict).
+	
+	if not is_initialized:
+		return []
+	
+	var cascades = morale_stress_manager.advance_time_period()
+	
+	for cascade in cascades:
+		print("Cascade triggered: %s for %s" % [cascade.get("type", "unknown"), cascade.get("crew_id", "crew")])
+	
+	return cascades
+
+
+func get_morale_status() -> Dictionary:
+	## Get current crew morale and stress snapshot.
+	
+	if not is_initialized:
+		return {}
+	
+	var status = morale_stress_manager.get_crew_status_report()
+	var diagnosis = morale_stress_manager.diagnose_crew_crisis()
+	status["diagnosis"] = diagnosis
+	
+	return status
+
+
+func apply_emergency_morale_event() -> void:
+	## Trigger an emergency morale-boosting event (crew bonding, celebration).
+	
+	morale_stress_manager.apply_emergency_morale_boost(20)
+	print("Emergency morale event applied: crew morale +20, stress -10")
+
+
+func apply_stress_shock(magnitude: int = 20) -> void:
+	## Apply stress shock (combat, threat, crisis).
+	
+	morale_stress_manager.apply_emergency_stress_spike(magnitude)
+	print("Stress shock applied: crew stress +%d, morale -%d" % [magnitude, magnitude / 2])
