@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tilly.dev/schemas/events.schema.json",
+  "title": "Events",
+  "type": "object",
+  "required": ["schema_version", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "stage", "weight", "choices"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "stage": { "enum": ["transit", "orbit", "surface", "combat", "downtime"] },
+          "weight": { "type": "number", "minimum": 0 },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["key", "operator", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "key": { "type": "string" },
+                "operator": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains"] },
+                "value": {}
+              }
+            }
+          },
+          "choices": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "label", "effects"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+                "label": { "type": "string", "minLength": 1 },
+                "effects": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["target", "operation", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "target": { "type": "string", "minLength": 1 },
+                      "operation": { "enum": ["add", "multiply", "set", "flag"] },
+                      "value": {}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

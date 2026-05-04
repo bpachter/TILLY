@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "destinations": [
+    {
+      "id": "earth",
+      "name": "Earth",
+      "region": "inner_system",
+      "risk_tier": 1,
+      "resource_signatures": ["organic_compounds"],
+      "neighbors": ["mars_colony"]
+    },
+    {
+      "id": "mars_colony",
+      "name": "Mars Colony",
+      "region": "inner_system",
+      "risk_tier": 2,
+      "resource_signatures": ["organic_compounds", "unknown_signal"],
+      "neighbors": ["earth", "europa"]
+    },
+    {
+      "id": "europa",
+      "name": "Europa",
+      "region": "outer_system",
+      "risk_tier": 3,
+      "resource_signatures": ["water_ice", "microbial_life"],
+      "neighbors": ["mars_colony", "enceladus"]
+    }
+  ]
+}

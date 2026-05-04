@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tilly.dev/schemas/destinations.schema.json",
+  "title": "Destinations",
+  "type": "object",
+  "required": ["schema_version", "destinations"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "destinations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "region", "risk_tier", "resource_signatures", "neighbors"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "region": { "enum": ["inner_system", "outer_system", "deep_system"] },
+          "risk_tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "resource_signatures": {
+            "type": "array",
+            "items": { "enum": ["water_ice", "organic_compounds", "microbial_life", "unknown_signal"] }
+          },
+          "neighbors": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+          }
+        }
+      }
+    }
+  }
+}

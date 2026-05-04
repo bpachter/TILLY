@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "traits": [
+    {
+      "id": "calm_under_fire",
+      "name": "Calm Under Fire",
+      "category": "crisis",
+      "hidden": false,
+      "modifiers": [
+        { "target": "panic_chance", "operation": "add", "value": -0.15 }
+      ]
+    },
+    {
+      "id": "reckless_genius",
+      "name": "Reckless Genius",
+      "category": "operational",
+      "hidden": false,
+      "modifiers": [
+        { "target": "critical_repair_chance", "operation": "add", "value": 0.1 },
+        { "target": "accident_chance", "operation": "add", "value": 0.05 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "archetypes": [
+    {
+      "id": "pilot_stoic",
+      "role": "pilot",
+      "base_stats": {
+        "repair_speed": 0.8,
+        "combat_focus": 1.1,
+        "scan_precision": 0.9,
+        "stress_tolerance": 1.2
+      },
+      "trait_pool": ["calm_under_fire", "reckless_genius"]
+    }
+  ]
+}

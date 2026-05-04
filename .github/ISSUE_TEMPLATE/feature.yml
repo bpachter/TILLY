@@ -1,0 +1,42 @@
+name: Feature
+about: Plan and track a new gameplay or platform feature
+title: "[Feature] "
+labels:
+  - type:feature
+  - status:triage
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What player or engineering problem are we solving?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the implementation approach.
+    validations:
+      required: true
+  - type: textarea
+    id: data_contracts
+    attributes:
+      label: Data contract impact
+      description: Which schemas, data files, and validators will change?
+      placeholder: data/schemas/..., data/examples/..., tools/validation/...
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete observable outcomes.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Engineering checklist
+      options:
+        - label: Added or updated tests/validation
+        - label: Updated docs and roadmap
+        - label: Risks and rollback strategy documented

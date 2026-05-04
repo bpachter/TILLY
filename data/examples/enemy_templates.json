@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "enemies": [
+    {
+      "id": "hybrid_scout_01",
+      "faction": "hybrid_collective",
+      "hull": 24,
+      "subsystems": ["engines", "shields", "weapons", "sensors"],
+      "behavior_profile": {
+        "aggression": 0.7,
+        "boarding_bias": 0.3,
+        "targeting_bias": "weapons"
+      }
+    }
+  ]
+}
