@@ -27,10 +27,11 @@ func setup_tutorial_scenario() -> void:
 	
 	tilly_game.start_new_game()
 	
-	# Print crew roster
+	# Print crew roster with ambitions
 	print("\nStarting Crew:")
 	for crew_member in tilly_game.crew:
 		print("  - %s (%s): %s" % [crew_member.name, crew_member.role, crew_member.traits])
+		print("    Ambition: %s" % crew_member.get_ambition_status())
 	
 	# Phase 1: Earth (safe zone)
 	print("\n[Phase 1] At Earth Station")
@@ -54,6 +55,13 @@ func setup_tutorial_scenario() -> void:
 	var morale_status = tilly_game.get_morale_status()
 	print("  Average morale: %d" % morale_status.get("average_morale", 0))
 	print("  Diagnosis: %s" % morale_status.get("diagnosis", "unknown"))
+	
+	# Show ambitions progress
+	var ambition_report = tilly_game.crew_ambitions_manager.get_ambitions_report()
+	for entry in ambition_report:
+		if entry.get("progress", 0) > 0:
+			print("  %s goal progress: %d%%" % [entry.get("name", "?"), entry.get("progress", 0)])
+	
 	await get_tree().create_timer(1.0).timeout
 	
 	# Trigger a travel event
@@ -98,7 +106,8 @@ func simulate_transit_to(dest_id: String) -> void:
 	print("Fuel consumed: %d (remaining: %d)" % [fuel_cost, tilly_game.game_state.get_resource("fuel")])
 	
 	await get_tree().create_timer(1.5).timeout
-	tilly_game.game_state.set_destination(dest_id)
+	# Use travel_to_destination to fire ambition/mental health hooks
+	tilly_game.travel_to_destination(dest_id)
 	print("Arrived at %s" % dest_id)
 
 

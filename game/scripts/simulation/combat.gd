@@ -131,9 +131,14 @@ func get_enemy_action(tick: int) -> String:
 
 
 func apply_enemy_action(action: String) -> void:
+	var crew_mods = calculate_crew_modifiers()
+	var evasion: float = crew_mods.get("evasion", 0.0)
+	
 	match action:
 		"weapon_attack":
-			var damage: int = rng.next_int(8, 16)
+			# Pilot evasion skill reduces weapon damage
+			var raw_damage: int = rng.next_int(8, 16)
+			var damage = int(raw_damage * (1.0 - evasion))
 			# BUG-FIX #8: Clamp player hull to 0 minimum.
 			combat_state["player_hull"] = max(0, combat_state["player_hull"] - damage)
 			# 30% chance a random crew member takes hull-breach injury
@@ -203,7 +208,7 @@ func apply_player_action(action: String) -> void:
 
 
 func calculate_crew_modifiers() -> Dictionary:
-	var modifiers: Dictionary = {"attack_damage": 1.0, "repair_efficiency": 1.0}
+	var modifiers: Dictionary = {"attack_damage": 1.0, "repair_efficiency": 1.0, "evasion": 0.0}
 	
 	# Panic penalty: panicked crew members reduce effectiveness
 	for crew_member in crew:
@@ -223,6 +228,24 @@ func calculate_crew_modifiers() -> Dictionary:
 				modifiers["attack_damage"] += member_mods[key] * 0.1
 			elif key.contains("repair"):
 				modifiers["repair_efficiency"] += member_mods[key] * 0.1
+	
+	# Skill level bonuses from living crew
+	for crew_member in crew:
+		if crew_member.health <= 0:
+			continue
+		match crew_member.role:
+			"pilot":
+				# Navigation skill: evasion reduces incoming damage
+				modifiers["evasion"] += crew_member.get_skill_modifier("navigation")
+			"security":
+				# Combat skill: direct attack bonus
+				modifiers["attack_damage"] += crew_member.get_skill_modifier("combat")
+			"engineer":
+				# Repair skill: repair efficiency bonus
+				modifiers["repair_efficiency"] += crew_member.get_skill_modifier("repair")
+			"medic":
+				# Medicine skill: extra repair efficiency (medical application)
+				modifiers["repair_efficiency"] += crew_member.get_skill_modifier("medicine") * 0.5
 	
 	# Relationship specialization bonuses for high-affinity crew pairs
 	var spec_bonus = _calculate_specialization_bonus()
