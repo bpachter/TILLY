@@ -1,5 +1,4 @@
 ; Engine configuration file.
-; Generated manually for initial scaffolding.
 
 config_version=5
 
@@ -7,11 +6,18 @@ config_version=5
 config/name="TILLY"
 run/main_scene="res://scenes/Main.tscn"
 
+[autoload]
+# No autoloads yet — game systems initialized via TillyGame node
+
 [display]
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
 
+[physics]
+physics_engine="GodotPhysics2D"
+
 [rendering]
 textures/canvas_textures/default_texture_filter=0
+textures/canvas_textures/default_texture_repeat=0

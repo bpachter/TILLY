@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "events": [
+    {
+      "id": "silent_probe_ping",
+      "title": "Silent Probe Ping",
+      "stage": "transit",
+      "weight": 1.2,
+      "conditions": [
+        { "key": "current_destination", "operator": "eq", "value": "europa" }
+      ],
+      "choices": [
+        {
+          "id": "intercept_signal",
+          "label": "Intercept and decode",
+          "effects": [
+            { "target": "intel_points", "operation": "add", "value": 2 },
+            { "target": "stress", "operation": "add", "value": 1 }
+          ]
+        },
+        {
+          "id": "ignore_signal",
+          "label": "Maintain course",
+          "effects": [
+            { "target": "fuel", "operation": "add", "value": -1 }
+          ]
+        }
+      ]
+    }
+  ]
+}

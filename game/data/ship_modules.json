@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "modules": [
+    {
+      "id": "lab_array_mk1",
+      "slot_type": "science",
+      "power_draw": 2,
+      "durability": 12,
+      "tags": ["analysis", "biosample", "research"]
+    },
+    {
+      "id": "hull_patch_drone",
+      "slot_type": "utility",
+      "power_draw": 1,
+      "durability": 8,
+      "tags": ["repair", "automation"]
+    }
+  ]
+}
