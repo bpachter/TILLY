@@ -11,6 +11,50 @@
         "boarding_bias": 0.3,
         "targeting_bias": "weapons"
       }
+    },
+    {
+      "id": "pirate_scavenger_light",
+      "faction": "pirate_scavengers",
+      "hull": 14,
+      "subsystems": ["engines", "weapons"],
+      "behavior_profile": {
+        "aggression": 0.4,
+        "boarding_bias": 0.5,
+        "targeting_bias": "balanced"
+      }
+    },
+    {
+      "id": "rogue_ai_probe",
+      "faction": "rogue_ai",
+      "hull": 20,
+      "subsystems": ["engines", "shields", "sensors", "weapons"],
+      "behavior_profile": {
+        "aggression": 0.65,
+        "boarding_bias": 0.1,
+        "targeting_bias": "engines"
+      }
+    },
+    {
+      "id": "hybrid_interceptor",
+      "faction": "hybrid_collective",
+      "hull": 32,
+      "subsystems": ["engines", "shields", "weapons", "sensors", "life_support"],
+      "behavior_profile": {
+        "aggression": 0.8,
+        "boarding_bias": 0.2,
+        "targeting_bias": "weapons"
+      }
+    },
+    {
+      "id": "alien_swarm_cluster",
+      "faction": "alien_swarm",
+      "hull": 38,
+      "subsystems": ["engines", "weapons", "life_support"],
+      "behavior_profile": {
+        "aggression": 0.85,
+        "boarding_bias": 0.45,
+        "targeting_bias": "life_support"
+      }
     }
   ]
 }

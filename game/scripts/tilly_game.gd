@@ -14,6 +14,7 @@ var crew_event_integration: CrewEventIntegration
 var morale_stress_manager: MoraleStressManager
 var crew_ambitions_manager: CrewAmbitionsManager
 var crew_mental_health_manager: CrewMentalHealthManager
+var ship_loadout: ShipLoadout
 var crew: Array = []
 
 var is_initialized: bool = false
@@ -94,6 +95,19 @@ func initialize() -> bool:
 	crew_mental_health_manager = CrewMentalHealthManager.new(rng, crew)
 	print("✓ Crew mental health manager initialized")
 	
+	# Inject mental health manager into event integration for phobia penalties
+	crew_event_integration.mental_health_manager = crew_mental_health_manager
+	
+	# Create ship loadout and equip starting modules
+	var modules_contract = contract_loader.get_contract("ship_modules")
+	ship_loadout = ShipLoadout.new(game_state.get_resource("power_available"))
+	ship_loadout.equip_starting_loadout(modules_contract, rng)
+	
+	# Inject loadout into combat engine and event integration
+	combat_engine.ship_loadout = ship_loadout
+	crew_event_integration.ship_loadout = ship_loadout
+	print("✓ Ship loadout configured")
+	
 	is_initialized = true
 	return true
 
@@ -130,18 +144,39 @@ func start_new_game() -> void:
 func travel_to_destination(dest_id: String) -> void:
 	## Unified destination travel that fires all crew hooks.
 	game_state.set_destination(dest_id)
+	game_state.increment_turn()
+	
+	# Check for run-ending conditions after arriving
+	var result = game_state.check_game_over()
+	if result != "ongoing":
+		print("=== RUN OVER: %s ===" % result.to_upper())
+		return
 	
 	# Ambition progress
 	var ambition_results = crew_ambitions_manager.notify_destination_reached(dest_id)
-	for result in ambition_results:
-		var m = result["crew_member"]
-		if result["completed"]:
+	for result_entry in ambition_results:
+		var m = result_entry["crew_member"]
+		if result_entry["completed"]:
 			print("★ %s fulfilled their ambition at %s!" % [m.name, dest_id])
 	
 	# Mental health: deep-system destinations count as deep_space context
 	var deep_system_ids = ["pluto", "ceres", "enceladus", "titan"]
 	if dest_id in deep_system_ids:
 		crew_mental_health_manager.tick_phobia_exposure("deep_space")
+
+
+func check_run_state() -> String:
+	## Evaluate and return current run result. Prints if game has ended.
+	var result = game_state.check_game_over()
+	if result == "victory":
+		print("\n★★★ RUN COMPLETE — VICTORY! Visited %d destinations over %d turns. ★★★" % [
+			game_state.visited_destinations.size(), game_state.turn_number
+		])
+	elif result == "defeat":
+		print("\n✗ RUN OVER — DEFEAT. Ship lost on turn %d." % game_state.turn_number)
+	elif result == "stranded":
+		print("\n✗ RUN OVER — STRANDED. Fuel exhausted at %s." % game_state.current_destination)
+	return result
 
 
 func trigger_random_event() -> Dictionary:
@@ -169,17 +204,51 @@ func trigger_random_event() -> Dictionary:
 	return resolution
 
 
-func start_combat_encounter(enemy_id: String) -> bool:
+func start_combat_encounter(enemy_id: String = "") -> bool:
 	if not is_initialized:
 		return false
 	
 	var enemies_contract: Dictionary = contract_loader.get_contract("enemy_templates")
-	if combat_engine.start_encounter(enemy_id, enemies_contract):
-		print("Combat encounter started: %s" % enemy_id)
+	
+	# If no enemy specified, pick one scaled to current destination risk tier
+	var resolved_id: String = enemy_id
+	if resolved_id.is_empty():
+		resolved_id = _pick_enemy_for_destination()
+	
+	if combat_engine.start_encounter(resolved_id, enemies_contract):
+		print("Combat encounter started: %s" % resolved_id)
 		return true
 	else:
-		print("Failed to start encounter: unknown enemy %s" % enemy_id)
+		print("Failed to start encounter: unknown enemy %s" % resolved_id)
 		return false
+
+
+func _pick_enemy_for_destination() -> String:
+	## Returns an enemy ID appropriate for the current destination's risk tier.
+	var destinations_contract = contract_loader.get_contract("destinations")
+	var destinations: Array = destinations_contract.get("destinations", [])
+	
+	var risk_tier: int = 2  # Default
+	for dest in destinations:
+		if dest.get("id", "") == game_state.current_destination:
+			risk_tier = dest.get("risk_tier", 2)
+			break
+	
+	# Map risk tiers to enemy pools
+	# Tier 1-2: weak pirates; Tier 3: rogue AI or hybrid scout; Tier 4-5: interceptors/swarm
+	match risk_tier:
+		1:
+			return "pirate_scavenger_light"
+		2:
+			return "pirate_scavenger_light" if rng.next_float() < 0.6 else "hybrid_scout_01"
+		3:
+			return "rogue_ai_probe" if rng.next_float() < 0.5 else "hybrid_scout_01"
+		4:
+			return "hybrid_interceptor" if rng.next_float() < 0.6 else "rogue_ai_probe"
+		5:
+			return "alien_swarm_cluster" if rng.next_float() < 0.7 else "hybrid_interceptor"
+		_:
+			return "hybrid_scout_01"
 
 
 func advance_combat() -> void:

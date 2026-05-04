@@ -16,6 +16,7 @@ var enemy_ship: Dictionary = {}
 var combat_state: Dictionary = {}
 var tick_log: Array = []
 var is_running: bool = false
+var ship_loadout: ShipLoadout = null  # Optional: injected by TillyGame
 
 
 func _init(p_rng: TillyRNG, p_game_state: GameState) -> void:
@@ -42,8 +43,12 @@ func start_encounter(enemy_id: String, enemy_templates_contract: Dictionary) -> 
 		return false
 	
 	# Initialize combat state
+	var base_hull: int = game_state.get_resource("hull_integrity")
+	# Hull armor bonus from ship modules
+	if ship_loadout:
+		base_hull += ship_loadout.get_hull_bonus()
 	combat_state = {
-		"player_hull": game_state.get_resource("hull_integrity"),
+		"player_hull": base_hull,
 		"enemy_hull": enemy_template.get("hull", 20),
 		"player_shielded": false,
 		"enemy_shielded": false,
@@ -251,6 +256,11 @@ func calculate_crew_modifiers() -> Dictionary:
 	var spec_bonus = _calculate_specialization_bonus()
 	modifiers["attack_damage"] += spec_bonus.get("attack_damage", 0.0)
 	modifiers["repair_efficiency"] += spec_bonus.get("repair_efficiency", 0.0)
+	
+	# Ship loadout stat bonuses
+	if ship_loadout:
+		modifiers["attack_damage"] += ship_loadout.get_stat_bonus("attack_damage")
+		modifiers["repair_efficiency"] += ship_loadout.get_stat_bonus("repair_efficiency")
 	
 	return modifiers
 

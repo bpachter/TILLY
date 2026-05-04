@@ -431,6 +431,146 @@
           ]
         }
       ]
+    },
+    {
+      "id": "anomaly_detection",
+      "title": "Uncharted Spatial Anomaly",
+      "stage": "orbit",
+      "weight": 1.1,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "probe_anomaly",
+          "label": "Deploy sensor probe",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 8 },
+            { "target": "flag:anomaly_studied", "operation": "set", "value": true }
+          ]
+        },
+        {
+          "id": "log_and_pass",
+          "label": "Log coordinates and move on",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "rescue_mission",
+      "title": "Survivors Detected — Rescue Window Open",
+      "stage": "orbit",
+      "weight": 1.0,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "launch_rescue",
+          "label": "Launch rescue team",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -15 },
+            { "target": "resource:morale", "operation": "add", "value": 20 }
+          ]
+        },
+        {
+          "id": "abort_rescue",
+          "label": "Too dangerous — abort",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": -12 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "power_fluctuation",
+      "title": "Power Grid Fluctuation",
+      "stage": "orbit",
+      "weight": 1.3,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "manual_override",
+          "label": "Engineer manual override",
+          "effects": [
+            { "target": "resource:scrap", "operation": "add", "value": -10 }
+          ]
+        },
+        {
+          "id": "system_reboot",
+          "label": "Full system reboot",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": -5 },
+            { "target": "flag:systems_rebooted", "operation": "set", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scavenge_wreckage",
+      "title": "Derelict Vessel on Scanners",
+      "stage": "orbit",
+      "weight": 1.4,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "board_wreck",
+          "label": "Board and salvage",
+          "effects": [
+            { "target": "resource:scrap", "operation": "add", "value": 30 },
+            { "target": "resource:fuel", "operation": "add", "value": -5 }
+          ]
+        },
+        {
+          "id": "scan_only_wreck",
+          "label": "Remote scan only",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crew_illness",
+      "title": "Illness Spreading Through Quarters",
+      "stage": "downtime",
+      "weight": 0.9,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "quarantine_sick",
+          "label": "Strict quarantine protocol",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": -8 }
+          ]
+        },
+        {
+          "id": "treat_with_meds",
+          "label": "Use medical supplies",
+          "effects": [
+            { "target": "resource:scrap", "operation": "add", "value": -15 },
+            { "target": "resource:morale", "operation": "add", "value": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "distress_beacon",
+      "title": "Automated Distress Beacon",
+      "stage": "transit",
+      "weight": 1.2,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "follow_beacon",
+          "label": "Divert to investigate",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -10 },
+            { "target": "resource:scrap", "operation": "add", "value": 20 }
+          ]
+        },
+        {
+          "id": "ignore_beacon",
+          "label": "Mark and continue course",
+          "effects": []
+        }
+      ]
     }
   ]
 }

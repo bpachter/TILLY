@@ -72,9 +72,9 @@ func setup_tutorial_scenario() -> void:
 	print("\n[Phase 5] Arrived at Europa - Scanning for life...")
 	await simulate_destination("europa", 2.0)
 	
-	# Trigger combat encounter with stress effects
+	# Trigger combat encounter — enemy selected by destination risk tier
 	print("\n[Phase 6] CONTACT DETECTED - Initiating combat...")
-	await simulate_combat("hybrid_scout_01")
+	await simulate_combat("")
 	
 	# End of tutorial
 	print("\n=== Tutorial Complete ===")

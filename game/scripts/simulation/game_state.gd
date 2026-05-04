@@ -9,6 +9,8 @@ var current_destination: String = "earth"
 var visited_destinations: PackedStringArray = PackedStringArray()
 var crew: Array = []
 var flags: Dictionary = {}
+var turn_number: int = 0          # Increments on each destination arrival
+var run_result: String = "ongoing" # "ongoing" | "victory" | "defeat" | "stranded"
 var resources: Dictionary = {
 	"fuel": 100,
 	"scrap": 0,
@@ -27,6 +29,47 @@ func set_destination(dest_id: String) -> void:
 	current_destination = dest_id
 	if dest_id not in visited_destinations:
 		visited_destinations.append(dest_id)
+
+
+func increment_turn() -> int:
+	turn_number += 1
+	return turn_number
+
+
+func check_game_over() -> String:
+	## Evaluates all game-over conditions. Returns run_result string.
+	## Callers should act on a non-"ongoing" result.
+	
+	if run_result != "ongoing":
+		return run_result  # Already settled
+	
+	# Defeat: ship hull at zero
+	if resources.get("hull_integrity", 100) <= 0:
+		run_result = "defeat"
+		return run_result
+	
+	# Defeat: all crew dead
+	if has_flag("all_crew_dead"):
+		run_result = "defeat"
+		return run_result
+	
+	# Stranded: out of fuel and not at a safe port
+	var safe_ports: Array = ["earth", "mars_colony"]
+	if resources.get("fuel", 100) <= 0 and current_destination not in safe_ports:
+		run_result = "stranded"
+		return run_result
+	
+	# Victory: visited all 8 destinations
+	if visited_destinations.size() >= 8:
+		run_result = "victory"
+		return run_result
+	
+	# Victory: reached Pluto (the deep-system objective)
+	if "pluto" in visited_destinations:
+		run_result = "victory"
+		return run_result
+	
+	return "ongoing"
 
 
 func add_flag(flag_name: String, value: bool = true) -> void:
@@ -53,7 +96,9 @@ func serialize() -> Dictionary:
 		"visited_destinations": visited_destinations,
 		"crew": crew,
 		"flags": flags,
-		"resources": resources
+		"resources": resources,
+		"turn_number": turn_number,
+		"run_result": run_result
 	}
 
 
@@ -64,3 +109,5 @@ func deserialize(data: Dictionary) -> void:
 	crew = data.get("crew", [])
 	flags = data.get("flags", {})
 	resources = data.get("resources", {})
+	turn_number = data.get("turn_number", 0)
+	run_result = data.get("run_result", "ongoing")

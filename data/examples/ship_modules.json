@@ -14,6 +14,27 @@
       "power_draw": 1,
       "durability": 8,
       "tags": ["repair", "automation"]
+    },
+    {
+      "id": "weapons_array_mk1",
+      "slot_type": "offense",
+      "power_draw": 3,
+      "durability": 10,
+      "tags": ["damage", "tracking"]
+    },
+    {
+      "id": "reinforced_hull_plating",
+      "slot_type": "defense",
+      "power_draw": 0,
+      "durability": 20,
+      "tags": ["armor", "impact"]
+    },
+    {
+      "id": "emergency_med_bay",
+      "slot_type": "life_support",
+      "power_draw": 2,
+      "durability": 12,
+      "tags": ["medicine", "recovery"]
     }
   ]
 }

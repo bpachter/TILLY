@@ -8,6 +8,8 @@ var rng: TillyRNG
 var game_state: GameState
 var crew: Array = []
 var traits_contract: Dictionary = {}
+var mental_health_manager = null  # Optional: CrewMentalHealthManager injection
+var ship_loadout = null            # Optional: ShipLoadout injection
 
 # Event outcome modifiers based on crew traits
 var trait_event_affinity: Dictionary = {
@@ -65,7 +67,20 @@ func calculate_event_success_probability(event_id: String) -> float:
 	
 	var morale_modifier: float = (avg_morale - 50.0) / 100.0 * 0.2  # ±10% based on morale
 	
-	return clamp(base_probability + crew_modifier + morale_modifier, 0.0, 1.0)
+	# Phobia penalties: active phobias reduce event success in matching contexts
+	var phobia_penalty: float = 0.0
+	if mental_health_manager:
+		for crew_member in crew:
+			if crew_member.health > 0:
+				phobia_penalty += mental_health_manager.get_phobia_event_penalty(crew_member, event_id)
+	
+	# Ship science module bonus on surface/orbit stages
+	var loadout_bonus: float = 0.0
+	if ship_loadout:
+		var stage = ""  # We don't have stage here, use science bonus broadly
+		loadout_bonus = ship_loadout.get_science_bonus() * 0.5  # Half bonus in events
+	
+	return clamp(base_probability + crew_modifier + morale_modifier + phobia_penalty + loadout_bonus, 0.0, 1.0)
 
 
 func apply_event_outcome_with_crew(event_id: String, choice_data: Dictionary) -> Dictionary:
