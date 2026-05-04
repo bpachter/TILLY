@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "archetypes": [
     {
-      "id": "pilot_stoic",
+      "id": "pilot_steady",
       "role": "pilot",
       "base_stats": {
         "repair_speed": 0.8,
@@ -10,7 +10,62 @@
         "scan_precision": 0.9,
         "stress_tolerance": 1.2
       },
-      "trait_pool": ["calm_under_fire", "reckless_genius"]
+      "trait_pool": ["calm_under_fire", "brave_heart", "intuitive"]
+    },
+    {
+      "id": "engineer_brilliant",
+      "role": "engineer",
+      "base_stats": {
+        "repair_speed": 1.3,
+        "combat_focus": 0.7,
+        "scan_precision": 0.8,
+        "stress_tolerance": 0.9
+      },
+      "trait_pool": ["reckless_genius", "hyperfocus", "night_owl"]
+    },
+    {
+      "id": "scientist_meticulous",
+      "role": "scientist",
+      "base_stats": {
+        "repair_speed": 0.7,
+        "combat_focus": 0.8,
+        "scan_precision": 1.3,
+        "stress_tolerance": 1.0
+      },
+      "trait_pool": ["hyperfocus", "intuitive", "curious_explorer"]
+    },
+    {
+      "id": "security_tough",
+      "role": "security",
+      "base_stats": {
+        "repair_speed": 0.9,
+        "combat_focus": 1.2,
+        "scan_precision": 0.7,
+        "stress_tolerance": 1.3
+      },
+      "trait_pool": ["brave_heart", "suspicious", "calm_under_fire"]
+    },
+    {
+      "id": "medic_nurturing",
+      "role": "medic",
+      "base_stats": {
+        "repair_speed": 1.0,
+        "combat_focus": 0.6,
+        "scan_precision": 1.1,
+        "stress_tolerance": 1.2
+      },
+      "trait_pool": ["empathic_listener", "cautious", "green_thumb"]
+    },
+    {
+      "id": "diplomat_sharp",
+      "role": "diplomat",
+      "base_stats": {
+        "repair_speed": 0.8,
+        "combat_focus": 0.7,
+        "scan_precision": 0.9,
+        "stress_tolerance": 1.1
+      },
+      "trait_pool": ["empathic_listener", "pessimist", "intuitive"]
     }
   ]
 }

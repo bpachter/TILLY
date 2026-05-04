@@ -9,6 +9,8 @@ var contract_loader: ContractLoader
 var game_state: GameState
 var event_resolver: EventResolver
 var combat_engine: CombatEngine
+var crew_generator: CrewGenerator
+var crew: Array = []
 
 var is_initialized: bool = false
 var last_error: String = ""
@@ -55,6 +57,19 @@ func initialize() -> bool:
 	combat_engine = CombatEngine.new(rng, game_state)
 	print("✓ Combat engine initialized")
 	
+	# Create crew generator
+	crew_generator = CrewGenerator.new(rng)
+	print("✓ Crew generator initialized")
+	
+	# Generate starting crew
+	var archetypes_contract = contract_loader.get_contract("crew_archetypes")
+	var traits_contract = contract_loader.get_contract("crew_traits")
+	crew = crew_generator.generate_crew(3, archetypes_contract, traits_contract)
+	print("✓ Crew generated: %d members" % crew.size())
+	
+	# Set crew on combat engine
+	combat_engine.set_crew(crew, traits_contract)
+	
 	is_initialized = true
 	return true
 
@@ -68,6 +83,14 @@ func print_system_status() -> void:
 	print("  - events: %d events" % contract_loader.get_contract("events").get("events", []).size())
 	print("  - enemy_templates: %d enemy types" % contract_loader.get_contract("enemy_templates").get("enemies", []).size())
 	print("  - ship_modules: %d modules" % contract_loader.get_contract("ship_modules").get("modules", []).size())
+	print("\nCrew Status:")
+	for crew_member in crew:
+		print("  - %s (%s): traits=%s, morale=%d" % [
+			crew_member.name,
+			crew_member.role,
+			crew_member.traits,
+			crew_member.morale
+		])
 	print("\nRun Seed: %d" % game_state.run_seed)
 	print("Starting Location: %s" % game_state.current_destination)
 

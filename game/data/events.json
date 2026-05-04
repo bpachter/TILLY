@@ -14,15 +14,420 @@
           "id": "intercept_signal",
           "label": "Intercept and decode",
           "effects": [
-            { "target": "intel_points", "operation": "add", "value": 2 },
-            { "target": "stress", "operation": "add", "value": 1 }
+            { "target": "resource:morale", "operation": "add", "value": 2 },
+            { "target": "flag:alien_contact_detected", "operation": "set", "value": true }
           ]
         },
         {
           "id": "ignore_signal",
           "label": "Maintain course",
           "effects": [
-            { "target": "fuel", "operation": "add", "value": -1 }
+            { "target": "resource:fuel", "operation": "add", "value": -2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fuel_efficiency_win",
+      "title": "Stellar Wind Boost",
+      "stage": "transit",
+      "weight": 0.8,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "catch_wind",
+          "label": "Harness the wind",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": 10 }
+          ]
+        },
+        {
+          "id": "skip_boost",
+          "label": "Maintain steady course",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "meteor_shower",
+      "title": "Unexpected Meteor Shower",
+      "stage": "transit",
+      "weight": 1.5,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "dodge_aggressive",
+          "label": "Aggressive evasion (high fuel cost)",
+          "effects": [
+            { "target": "resource:hull_integrity", "operation": "add", "value": -5 },
+            { "target": "resource:fuel", "operation": "add", "value": -8 }
+          ]
+        },
+        {
+          "id": "dodge_careful",
+          "label": "Careful threading",
+          "effects": [
+            { "target": "resource:hull_integrity", "operation": "add", "value": -12 },
+            { "target": "resource:fuel", "operation": "add", "value": -2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crew_bonding_dinner",
+      "title": "Crew Dinner in the Commons",
+      "stage": "downtime",
+      "weight": 2.0,
+      "conditions": [
+        { "key": "resource:morale", "operator": "lt", "value": 80 }
+      ],
+      "choices": [
+        {
+          "id": "host_dinner",
+          "label": "Cook a special meal",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 15 },
+            { "target": "resource:fuel", "operation": "add", "value": -3 }
+          ]
+        },
+        {
+          "id": "skip_dinner",
+          "label": "Rations only",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "garden_harvest",
+      "title": "Hydroponics Bay Harvest",
+      "stage": "downtime",
+      "weight": 1.8,
+      "conditions": [
+        { "key": "flag:hydroponics_online", "operator": "eq", "value": true }
+      ],
+      "choices": [
+        {
+          "id": "harvest_now",
+          "label": "Harvest and preserve",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 10 }
+          ]
+        },
+        {
+          "id": "let_grow",
+          "label": "Wait for full maturity",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "equipment_malfunction",
+      "title": "Equipment Malfunction Detected",
+      "stage": "orbit",
+      "weight": 1.3,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "repair_now",
+          "label": "Initiate immediate repair",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -5 }
+          ]
+        },
+        {
+          "id": "defer_repair",
+          "label": "Defer and continue mission",
+          "effects": [
+            { "target": "flag:ship_degraded", "operation": "set", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gravity_anomaly",
+      "title": "Gravitational Anomaly Detected",
+      "stage": "orbit",
+      "weight": 1.1,
+      "conditions": [
+        { "key": "current_destination", "operator": "eq", "value": "enceladus" }
+      ],
+      "choices": [
+        {
+          "id": "investigate",
+          "label": "Launch probe investigation",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 5 },
+            { "target": "flag:anomaly_studied", "operation": "set", "value": true }
+          ]
+        },
+        {
+          "id": "avoid",
+          "label": "Maintain safe distance",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "surface_scan_success",
+      "title": "Bioscan Detected Organic Signatures",
+      "stage": "surface",
+      "weight": 2.0,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "collect_samples",
+          "label": "Launch extraction mission",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 20 },
+            { "target": "flag:sample_collected", "operation": "set", "value": true }
+          ]
+        },
+        {
+          "id": "scan_only",
+          "label": "Scan remotely first",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "surface_contamination_risk",
+      "title": "Unknown Contamination Risk Detected",
+      "stage": "surface",
+      "weight": 1.4,
+      "conditions": [
+        { "key": "flag:sample_collected", "operator": "eq", "value": true }
+      ],
+      "choices": [
+        {
+          "id": "quarantine_strict",
+          "label": "Strict quarantine protocols",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": -5 }
+          ]
+        },
+        {
+          "id": "quarantine_relaxed",
+          "label": "Relaxed containment (risky)",
+          "effects": [
+            { "target": "flag:contamination_risk", "operation": "set", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crew_conflict",
+      "title": "Crew Conflict Over Resources",
+      "stage": "downtime",
+      "weight": 1.2,
+      "conditions": [
+        { "key": "resource:morale", "operator": "lt", "value": 50 }
+      ],
+      "choices": [
+        {
+          "id": "mediate",
+          "label": "Mediate dispute personally",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 8 }
+          ]
+        },
+        {
+          "id": "ignore",
+          "label": "Let them work it out",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": -15 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cosmic_radiation_surge",
+      "title": "Cosmic Radiation Surge",
+      "stage": "transit",
+      "weight": 0.9,
+      "conditions": [
+        { "key": "destination_count", "operator": "gte", "value": 3 }
+      ],
+      "choices": [
+        {
+          "id": "activate_shielding",
+          "label": "Activate full radiation shielding",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -6 }
+          ]
+        },
+        {
+          "id": "risk_exposure",
+          "label": "Risk minor exposure",
+          "effects": [
+            { "target": "flag:crew_radiation_exposed", "operation": "set", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encrypted_distress_signal",
+      "title": "Encrypted Distress Signal",
+      "stage": "orbit",
+      "weight": 1.6,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "respond_rescue",
+          "label": "Attempt rescue mission",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -12 },
+            { "target": "resource:morale", "operation": "add", "value": 10 }
+          ]
+        },
+        {
+          "id": "log_and_move",
+          "label": "Log signal and continue",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "water_ice_deposit",
+      "title": "Rich Water Ice Deposit Located",
+      "stage": "surface",
+      "weight": 1.7,
+      "conditions": [
+        { "key": "current_destination", "operator": "eq", "value": "europa" }
+      ],
+      "choices": [
+        {
+          "id": "extract_water",
+          "label": "Extract and refine water",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": 25 }
+          ]
+        },
+        {
+          "id": "leave_intact",
+          "label": "Leave untouched for science",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quiet_night_reflection",
+      "title": "Quiet Night — Stars Everywhere",
+      "stage": "downtime",
+      "weight": 1.5,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "enjoy_view",
+          "label": "Spend time in observation deck",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 12 }
+          ]
+        },
+        {
+          "id": "work_late",
+          "label": "Work on repairs instead",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "rogue_ai_contact",
+      "title": "Unknown Signal — Origin: Unknown",
+      "stage": "transit",
+      "weight": 0.7,
+      "conditions": [
+        { "key": "destination_count", "operator": "gte", "value": 4 }
+      ],
+      "choices": [
+        {
+          "id": "establish_dialogue",
+          "label": "Attempt communication protocol",
+          "effects": [
+            { "target": "flag:rogue_ai_detected", "operation": "set", "value": true },
+            { "target": "resource:morale", "operation": "add", "value": -10 }
+          ]
+        },
+        {
+          "id": "go_dark",
+          "label": "Silence all transmissions",
+          "effects": [
+            { "target": "flag:threat_detected", "operation": "set", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crew_birthday",
+      "title": "Crew Member's Birthday",
+      "stage": "downtime",
+      "weight": 0.6,
+      "conditions": [],
+      "choices": [
+        {
+          "id": "celebrate",
+          "label": "Celebrate with the crew",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 15 }
+          ]
+        },
+        {
+          "id": "ignore",
+          "label": "Acknowledge quietly",
+          "effects": [
+            { "target": "resource:morale", "operation": "add", "value": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "experimental_upgrade",
+      "title": "Experimental Module Upgrade Available",
+      "stage": "orbit",
+      "weight": 0.8,
+      "conditions": [
+        { "key": "resource:scrap", "operator": "gte", "value": 50 }
+      ],
+      "choices": [
+        {
+          "id": "install_upgrade",
+          "label": "Install experimental upgrade",
+          "effects": [
+            { "target": "resource:scrap", "operation": "add", "value": -50 },
+            { "target": "flag:upgraded_systems", "operation": "set", "value": true }
+          ]
+        },
+        {
+          "id": "save_resources",
+          "label": "Save resources for repairs",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "titan_methane_storm",
+      "title": "Titan Methane Storm Approaching",
+      "stage": "orbit",
+      "weight": 1.4,
+      "conditions": [
+        { "key": "current_destination", "operator": "eq", "value": "titan" }
+      ],
+      "choices": [
+        {
+          "id": "ride_out_storm",
+          "label": "Ride out the storm",
+          "effects": [
+            { "target": "resource:hull_integrity", "operation": "add", "value": -8 }
+          ]
+        },
+        {
+          "id": "retreat_orbit",
+          "label": "Retreat to higher orbit",
+          "effects": [
+            { "target": "resource:fuel", "operation": "add", "value": -10 }
           ]
         }
       ]

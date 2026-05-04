@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/tactical_ui.gd"]
+[ext_resource type="Script" path="res://scripts/tilly_game.gd"]
+
+[node name="TacticalScene" type="Node2D"]
+
+[node name="TillyGame" type="Node" parent="."]
+script = ExtResource("res://scripts/tilly_game.gd")
+
+[node name="TacticalUI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("res://scripts/ui/tactical_ui.gd")

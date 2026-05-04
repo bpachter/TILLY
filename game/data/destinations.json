@@ -23,7 +23,7 @@
       "region": "outer_system",
       "risk_tier": 3,
       "resource_signatures": ["water_ice", "microbial_life"],
-      "neighbors": ["mars_colony", "enceladus"]
+      "neighbors": ["mars_colony", "enceladus", "ganymede"]
     },
     {
       "id": "enceladus",
@@ -31,7 +31,39 @@
       "region": "outer_system",
       "risk_tier": 4,
       "resource_signatures": ["water_ice", "unknown_signal"],
-      "neighbors": ["europa"]
+      "neighbors": ["europa", "ganymede"]
+    },
+    {
+      "id": "ganymede",
+      "name": "Ganymede",
+      "region": "outer_system",
+      "risk_tier": 3,
+      "resource_signatures": ["water_ice", "microbial_life", "organic_compounds"],
+      "neighbors": ["europa", "enceladus", "titan"]
+    },
+    {
+      "id": "titan",
+      "name": "Titan",
+      "region": "outer_system",
+      "risk_tier": 4,
+      "resource_signatures": ["organic_compounds", "microbial_life"],
+      "neighbors": ["ganymede", "ceres"]
+    },
+    {
+      "id": "ceres",
+      "name": "Ceres",
+      "region": "deep_system",
+      "risk_tier": 4,
+      "resource_signatures": ["water_ice", "unknown_signal"],
+      "neighbors": ["titan", "pluto"]
+    },
+    {
+      "id": "pluto",
+      "name": "Pluto",
+      "region": "deep_system",
+      "risk_tier": 5,
+      "resource_signatures": ["unknown_signal"],
+      "neighbors": ["ceres"]
     }
   ]
 }

@@ -8,6 +8,8 @@ const TICK_RATE: float = 1.0 / 30.0
 
 var rng: TillyRNG
 var game_state: GameState
+var crew: Array = []
+var traits_contract: Dictionary = {}
 var enemy_template: Dictionary = {}
 var player_ship: Dictionary = {}
 var enemy_ship: Dictionary = {}
@@ -19,6 +21,11 @@ var is_running: bool = false
 func _init(p_rng: TillyRNG, p_game_state: GameState) -> void:
 	rng = p_rng
 	game_state = p_game_state
+
+
+func set_crew(p_crew: Array, p_traits_contract: Dictionary) -> void:
+	crew = p_crew
+	traits_contract = p_traits_contract
 
 
 func start_encounter(enemy_id: String, enemy_templates_contract: Dictionary) -> bool:
@@ -136,15 +143,43 @@ func apply_enemy_action(action: String) -> void:
 
 
 func apply_player_action(action: String) -> void:
+	# Calculate crew trait modifiers
+	var crew_modifiers = calculate_crew_modifiers()
+	
 	match action:
 		"attack_weapons":
-			var damage: int = rng.next_int(6, 14)
-			combat_state["enemy_hull"] -= damage
+			var base_damage: int = rng.next_int(6, 14)
+			var damage_mod: float = crew_modifiers.get("attack_damage", 1.0)
+			var final_damage: int = int(base_damage * damage_mod)
+			combat_state["enemy_hull"] -= final_damage
 		"repair":
-			var heal: int = rng.next_int(4, 10)
-			combat_state["player_hull"] = min(combat_state["player_hull"] + heal, 100)
+			var base_heal: int = rng.next_int(4, 10)
+			var heal_mod: float = crew_modifiers.get("repair_efficiency", 1.0)
+			var final_heal: int = int(base_heal * heal_mod)
+			combat_state["player_hull"] = min(combat_state["player_hull"] + final_heal, 100)
 		"shield_up":
 			combat_state["player_shielded"] = true
+
+
+func calculate_crew_modifiers() -> Dictionary:
+	var modifiers: Dictionary = {}
+	
+	# Aggregate trait modifiers from crew
+	for crew_member in crew:
+		if crew_member.is_panicked():
+			modifiers["attack_damage"] = modifiers.get("attack_damage", 1.0) * 0.7
+			modifiers["repair_efficiency"] = modifiers.get("repair_efficiency", 1.0) * 0.8
+	
+	# Apply trait-specific modifiers
+	for crew_member in crew:
+		var member_mods = crew_member.get_trait_modifiers(traits_contract)
+		for key in member_mods:
+			if key.contains("damage"):
+				modifiers["attack_damage"] = modifiers.get("attack_damage", 1.0) + member_mods[key] * 0.1
+			elif key.contains("repair"):
+				modifiers["repair_efficiency"] = modifiers.get("repair_efficiency", 1.0) + member_mods[key] * 0.1
+	
+	return modifiers
 
 
 func get_combat_state() -> Dictionary:

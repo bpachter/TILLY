@@ -19,6 +19,101 @@
         { "target": "critical_repair_chance", "operation": "add", "value": 0.1 },
         { "target": "accident_chance", "operation": "add", "value": 0.05 }
       ]
+    },
+    {
+      "id": "empathic_listener",
+      "name": "Empathic Listener",
+      "category": "social",
+      "hidden": false,
+      "modifiers": [
+        { "target": "morale_recovery", "operation": "add", "value": 0.2 }
+      ]
+    },
+    {
+      "id": "hyperfocus",
+      "name": "Hyperfocus",
+      "category": "operational",
+      "hidden": false,
+      "modifiers": [
+        { "target": "scan_speed", "operation": "add", "value": 0.25 },
+        { "target": "social_decay_rate", "operation": "multiply", "value": 1.3 }
+      ]
+    },
+    {
+      "id": "suspicious",
+      "name": "Suspicious",
+      "category": "crisis",
+      "hidden": false,
+      "modifiers": [
+        { "target": "threat_detection", "operation": "add", "value": 0.15 },
+        { "target": "conflict_chance", "operation": "add", "value": 0.1 }
+      ]
+    },
+    {
+      "id": "brave_heart",
+      "name": "Brave Heart",
+      "category": "crisis",
+      "hidden": false,
+      "modifiers": [
+        { "target": "combat_morale", "operation": "add", "value": 0.2 },
+        { "target": "risk_tolerance", "operation": "add", "value": 0.3 }
+      ]
+    },
+    {
+      "id": "green_thumb",
+      "name": "Green Thumb",
+      "category": "operational",
+      "hidden": false,
+      "modifiers": [
+        { "target": "hydroponics_yield", "operation": "add", "value": 0.25 }
+      ]
+    },
+    {
+      "id": "intuitive",
+      "name": "Intuitive",
+      "category": "curiosity",
+      "hidden": false,
+      "modifiers": [
+        { "target": "anomaly_detection", "operation": "add", "value": 0.15 }
+      ]
+    },
+    {
+      "id": "cautious",
+      "name": "Cautious",
+      "category": "crisis",
+      "hidden": false,
+      "modifiers": [
+        { "target": "damage_taken", "operation": "multiply", "value": 0.85 },
+        { "target": "morale_loss_on_danger", "operation": "multiply", "value": 0.9 }
+      ]
+    },
+    {
+      "id": "curious_explorer",
+      "name": "Curious Explorer",
+      "category": "curiosity",
+      "hidden": false,
+      "modifiers": [
+        { "target": "sample_quality", "operation": "add", "value": 0.1 }
+      ]
+    },
+    {
+      "id": "pessimist",
+      "name": "Pessimist",
+      "category": "social",
+      "hidden": false,
+      "modifiers": [
+        { "target": "morale_base", "operation": "add", "value": -10 }
+      ]
+    },
+    {
+      "id": "night_owl",
+      "name": "Night Owl",
+      "category": "operational",
+      "hidden": false,
+      "modifiers": [
+        { "target": "night_shift_efficiency", "operation": "add", "value": 0.15 },
+        { "target": "day_shift_efficiency", "operation": "add", "value": -0.1 }
+      ]
     }
   ]
 }
